@@ -6,6 +6,12 @@
         "prepare": "husky",
         "format": "prettier --write \"**/*.{js,ts,jsx,tsx,json,css,md}\" --ignore-path .prettierignore"
     },
+    "lint-staged": {
+        "*.{ts,tsx,js,jsx,json,md,css}": [
+            "pnpm format",
+            "git add"
+        ]
+    },
     "private": true,
     "dependencies": {
         "@nestjs/common": "^11.0.0",
