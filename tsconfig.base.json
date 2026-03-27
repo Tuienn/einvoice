@@ -15,7 +15,8 @@
         "skipDefaultLibCheck": true,
         "baseUrl": ".",
         "paths": {
-            "@libs/constants/*": ["libs/constants/src/lib/*"]
+            "@libs/constants/*": ["libs/constants/src/lib*"],
+            "@libs/configruation/*": ["libs/configruation/src/lib/*"]
         }
     },
     "exclude": ["node_modules", "tmp"]
