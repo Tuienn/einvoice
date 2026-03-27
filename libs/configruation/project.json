@@ -1,9 +1,0 @@
-{
-    "name": "configruation",
-    "$schema": "../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "libs/configruation/src",
-    "projectType": "library",
-    "tags": [],
-    "// targets": "to see all targets run: nx show project configruation --web",
-    "targets": {}
-}
