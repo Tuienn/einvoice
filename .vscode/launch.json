@@ -4,21 +4,6 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Debug einvoice with Nx",
-            "runtimeExecutable": "pnpm exec",
-            "runtimeArgs": ["nx", "serve", "einvoice"],
-            "env": {
-                "NODE_OPTIONS": "--inspect=9229"
-            },
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "skipFiles": ["<node_internals>/**"],
-            "sourceMaps": true,
-            "outFiles": ["${workspaceFolder}/apps/einvoice/dist/**/*.(m|c|)js", "!**/node_modules/**"]
-        },
-        {
-            "type": "node",
-            "request": "launch",
             "name": "Debug bff with Nx",
             "runtimeExecutable": "pnpm exec",
             "runtimeArgs": ["nx", "serve", "bff"],

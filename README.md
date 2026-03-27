@@ -11,19 +11,19 @@
 To run the dev server for your app, use:
 
 ```sh
-npx nx serve einvoice
+npx nx serve your-app
 ```
 
 To create a production bundle:
 
 ```sh
-npx nx build einvoice
+npx nx build your-app
 ```
 
 To see all available targets to run for a project, run:
 
 ```sh
-npx nx show project einvoice
+npx nx show project your-app
 ```
 
 These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
