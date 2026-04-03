@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config'
 import { CONFIGURATION, TConfiguration } from '../configuration'
 import { APP_INTERCEPTOR } from '@nestjs/core'
 import { HttpLoggerInterceptor } from '@libs/interceptors/logger.interceptor'
+import { ExceptionInterceptor } from '@libs/interceptors/exception.interceptor'
 
 @Module({
     imports: [ConfigModule.forRoot({ load: [() => CONFIGURATION] })],
@@ -14,6 +15,10 @@ import { HttpLoggerInterceptor } from '@libs/interceptors/logger.interceptor'
         {
             provide: APP_INTERCEPTOR,
             useClass: HttpLoggerInterceptor
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: ExceptionInterceptor
         }
     ]
 })

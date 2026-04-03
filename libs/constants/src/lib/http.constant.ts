@@ -25,6 +25,14 @@ export const HTTP_MESSAGE_TITLES = {
      */
     PROCESSING: 'Processing',
 
+    /**
+     * Server gửi một số header sớm trước khi response cuối cùng sẵn sàng.
+     * Giúp client preload tài nguyên (CSS, JS) để tăng tốc tải trang.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc8297#section-2
+     */
+    EARLYHINTS: 'Early Hints',
+
     //NOTE - 2xx - Thành công
 
     /**
@@ -91,6 +99,22 @@ export const HTTP_MESSAGE_TITLES = {
      */
     MULTI_STATUS: 'Multi-Status',
 
+    /**
+     * Các thành phần con của thao tác DAV đã được báo cáo trước đó và sẽ không được lặp lại.
+     * Tránh liệt kê trùng lặp tài nguyên trong response multistatus.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc5842#section-7.1
+     */
+    ALREADY_REPORTED: 'Already Reported',
+
+    /**
+     * Server đã hoàn thành request GET nhưng response là kết quả của một hoặc nhiều instance-manipulation
+     * được áp dụng lên tài nguyên gốc.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc3229#section-10.4.1
+     */
+    CONTENT_DIFFERENT: 'Content Different',
+
     //NOTE - 3xx - Chuyển hướng
 
     /**
@@ -100,6 +124,14 @@ export const HTTP_MESSAGE_TITLES = {
      * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.4.1
      */
     MULTIPLE_CHOICES: 'Multiple Choices',
+
+    /**
+     * Tài nguyên có nhiều lựa chọn phản hồi hoặc nhiều đích đến khác nhau.
+     * Alias của MULTIPLE_CHOICES theo NestJS HttpStatus enum.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.4.1
+     */
+    AMBIGUOUS: 'Ambiguous',
 
     /**
      * Tài nguyên đã được chuyển vĩnh viễn sang URI mới.
@@ -116,6 +148,14 @@ export const HTTP_MESSAGE_TITLES = {
      * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.4.3
      */
     MOVED_TEMPORARILY: 'Moved Temporarily',
+
+    /**
+     * Tài nguyên tạm thời được chuyển sang URI khác.
+     * Alias của MOVED_TEMPORARILY theo NestJS HttpStatus enum.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.4.3
+     */
+    FOUND: 'Found',
 
     /**
      * Client nên lấy tài nguyên ở URI khác bằng phương thức GET.
@@ -252,11 +292,27 @@ export const HTTP_MESSAGE_TITLES = {
     REQUEST_TOO_LONG: 'Request Entity Too Large',
 
     /**
+     * Nội dung request vượt quá giới hạn server cho phép.
+     * Alias của REQUEST_TOO_LONG theo NestJS HttpStatus enum.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.5.11
+     */
+    PAYLOAD_TOO_LARGE: 'Payload Too Large',
+
+    /**
      * URI hoặc URL quá dài để server có thể xử lý.
      *
      * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.5.12
      */
     REQUEST_URI_TOO_LONG: 'Request-URI Too Long',
+
+    /**
+     * URI hoặc URL quá dài để server có thể xử lý.
+     * Alias của REQUEST_URI_TOO_LONG theo NestJS HttpStatus enum.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc7231#section-6.5.12
+     */
+    URI_TOO_LONG: 'URI Too Long',
 
     /**
      * Kiểu dữ liệu gửi lên không được server hỗ trợ.
@@ -275,11 +331,19 @@ export const HTTP_MESSAGE_TITLES = {
 
     /**
      * Mã 418 mang tính hài hước trong chuẩn HTTP mở rộng.
-     * Hầu như không dùng trong nghiệp vụ thật, chủ yếu để test hoặc minh họa.
+     * Alias của IM_A_TEAPOT theo NestJS HttpStatus enum.
      *
      * Tài liệu: https://tools.ietf.org/html/rfc2324#section-2.3.2
      */
-    IM_A_TEAPOT: "I'm a teapot",
+    I_AM_A_TEAPOT: "I'm a Teapot",
+
+    /**
+     * Request được gửi tới sai server đích cho cặp scheme/authority hiện tại.
+     * Alias của MISDIRECTED_REQUEST theo NestJS HttpStatus enum.
+     *
+     * Tài liệu: https://datatracker.ietf.org/doc/html/rfc7540#section-9.1.2
+     */
+    MISDIRECTED: 'Misdirected',
 
     /**
      * Request đúng cú pháp nhưng sai về mặt nghiệp vụ hoặc ngữ nghĩa.
@@ -325,6 +389,14 @@ export const HTTP_MESSAGE_TITLES = {
      * Tài liệu: https://tools.ietf.org/html/rfc6585#section-4
      */
     TOO_MANY_REQUESTS: 'Too Many Requests',
+
+    /**
+     * Lỗi không thể khôi phục xảy ra trong quá trình xử lý request.
+     * Thường liên quan đến lỗi nghiêm trọng ở cấp ứng dụng hoặc protocol.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc4918
+     */
+    UNRECOVERABLE_ERROR: 'Unrecoverable Error',
 
     /**
      * Header của request quá lớn nên server từ chối xử lý.
@@ -439,5 +511,13 @@ export const HTTP_MESSAGE_TITLES = {
      *
      * Tài liệu: https://tools.ietf.org/html/rfc2518#section-10.6
      */
-    INSUFFICIENT_STORAGE: 'Insufficient Storage'
+    INSUFFICIENT_STORAGE: 'Insufficient Storage',
+
+    /**
+     * Server phát hiện vòng lặp vô hạn khi xử lý request.
+     * Thường liên quan đến WebDAV khi binding tạo ra dependency tuần hoàn.
+     *
+     * Tài liệu: https://tools.ietf.org/html/rfc5842#section-7.2
+     */
+    LOOP_DETECTED: 'Loop Detected'
 } as const

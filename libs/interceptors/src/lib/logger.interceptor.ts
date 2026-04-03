@@ -3,6 +3,7 @@ import { UploadedFileLog, UploadedFilesLog } from '@libs/types/logger.type'
 import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { v4 as uuidv4 } from 'uuid'
+import { Observable } from 'rxjs'
 
 interface RequestWithLogMeta extends Request {
     processId?: string
@@ -32,7 +33,7 @@ interface HttpLogEntry {
 export class HttpLoggerInterceptor implements NestInterceptor {
     private readonly logger = new Logger(HttpLoggerInterceptor.name)
 
-    intercept(context: ExecutionContext, next: CallHandler) {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         if (context.getType() !== 'http') {
             return next.handle()
         }
