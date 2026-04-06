@@ -12,28 +12,28 @@ async function bootstrap() {
         {
             transport: Transport.TCP,
             options: {
-                host: AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST,
-                port: AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT
+                host: AppModule.CONFIGURATION.USER_CONFIG.TCP_HOST,
+                port: AppModule.CONFIGURATION.USER_CONFIG.TCP_PORT
             }
         },
         { inheritAppConfig: true } //NOTE - Kế thừa cấu hình từ app server, nếu không có flag này, TcpLoggerInterceptor được đăng ký trong app.module.ts sẽ không bao giờ chạy khi nhận TCP message
     )
 
-    const globalPrefix = AppModule.CONFIGURATION.BFF_CONFIG.HTTP_GLOBAL_PREFIX
+    const globalPrefix = AppModule.CONFIGURATION.USER_CONFIG.HTTP_GLOBAL_PREFIX
     app.setGlobalPrefix(globalPrefix)
     app.useGlobalPipes(new ValidationPipe({ transform: true }))
 
     //NOTE - Khởi động microservices server để nhận TCP request.
     app.startAllMicroservices()
     Logger.log(
-        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT} `
+        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.USER_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.USER_CONFIG.TCP_PORT} `
     )
 
     const swaggerConfig = new DocumentBuilder()
-        .setTitle('BFF API')
-        .setDescription('BFF API documentation')
+        .setTitle('User API')
+        .setDescription('User API documentation')
         .setVersion('1.0')
-        .addTag('bff')
+        .addTag('user')
         .addBearerAuth({
             type: 'http',
             in: 'header',
@@ -46,7 +46,7 @@ async function bootstrap() {
     const document = SwaggerModule.createDocument(app, swaggerConfig)
     SwaggerModule.setup(`${globalPrefix}/docs`, app, document)
 
-    const port = AppModule.CONFIGURATION.BFF_CONFIG.HTTP_PORT
+    const port = AppModule.CONFIGURATION.USER_CONFIG.HTTP_PORT
     await app.listen(port)
 
     Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix} `)

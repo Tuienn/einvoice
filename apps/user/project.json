@@ -1,7 +1,7 @@
 {
-    "name": "bff",
+    "name": "user",
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "apps/bff/src",
+    "sourceRoot": "apps/user/src",
     "projectType": "application",
     "tags": [],
     "targets": {
@@ -10,7 +10,7 @@
             "options": {
                 "command": "webpack-cli build",
                 "args": ["--node-env=production"],
-                "cwd": "apps/bff"
+                "cwd": "apps/user"
             },
             "configurations": {
                 "development": {
@@ -22,7 +22,7 @@
             "dependsOn": ["build"],
             "cache": true,
             "executor": "@nx/js:prune-lockfile",
-            "outputs": ["{workspaceRoot}/dist/apps/bff/package.json", "{workspaceRoot}/dist/apps/bff/pnpm-lock.yaml"],
+            "outputs": ["{workspaceRoot}/dist/apps/user/package.json", "{workspaceRoot}/dist/apps/user/pnpm-lock.yaml"],
             "options": {
                 "buildTarget": "build"
             }
@@ -30,7 +30,7 @@
         "copy-workspace-modules": {
             "dependsOn": ["build"],
             "cache": true,
-            "outputs": ["{workspaceRoot}/dist/apps/bff/workspace_modules"],
+            "outputs": ["{workspaceRoot}/dist/apps/user/workspace_modules"],
             "executor": "@nx/js:copy-workspace-modules",
             "options": {
                 "buildTarget": "build"
@@ -46,16 +46,16 @@
             "defaultConfiguration": "development",
             "dependsOn": ["build"],
             "options": {
-                "buildTarget": "bff:build",
+                "buildTarget": "user:build",
                 "runBuildTargetDependencies": false,
-                "runtimeArgs": ["--env-file=apps/bff/.env"]
+                "runtimeArgs": ["--env-file=apps/user/.env"]
             },
             "configurations": {
                 "development": {
-                    "buildTarget": "bff:build:development"
+                    "buildTarget": "user:build:development"
                 },
                 "production": {
-                    "buildTarget": "bff:build:production"
+                    "buildTarget": "user:build:production"
                 }
             }
         },

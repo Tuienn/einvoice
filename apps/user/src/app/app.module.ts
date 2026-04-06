@@ -8,22 +8,21 @@ import { HttpLoggerInterceptor } from '@libs/interceptors/logger.interceptor'
 import { ExceptionInterceptor } from '@libs/interceptors/exception.interceptor'
 import { TimeoutInterceptor } from '@libs/interceptors/timeout.interceptor'
 import { TcpLoggerInterceptor } from '@libs/interceptors/tcp-logger.interceptor'
-import { ClientsModule, Transport } from '@nestjs/microservices'
 
 @Module({
     imports: [
-        ConfigModule.forRoot({ load: [() => CONFIGURATION] }),
+        ConfigModule.forRoot({ load: [() => CONFIGURATION] })
         //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
-        ClientsModule.register([
-            {
-                name: `TCP_${AppModule.CONFIGURATION.SERVICE_NAME}`,
-                transport: Transport.TCP,
-                options: {
-                    host: AppModule.CONFIGURATION.BFF_CONFIG.USER_TCP_HOST,
-                    port: AppModule.CONFIGURATION.BFF_CONFIG.USER_TCP_PORT
-                }
-            }
-        ])
+        // ClientsModule.register([
+        //     {
+        //         name: `TCP_${AppModule.CONFIGURATION.SERVICE_NAME}`,
+        //         transport: Transport.TCP,
+        //         options: {
+        //             host: AppModule.CONFIGURATION.USER_CONFIG.TCP_HOST,
+        //             port: AppModule.CONFIGURATION.USER_CONFIG.TCP_PORT
+        //         }
+        //     }
+        // ])
     ],
     controllers: [AppController],
     providers: [

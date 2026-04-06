@@ -1,4 +1,5 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common'
+import { MessagePattern } from '@nestjs/microservices'
 import { AppService } from './app.service'
 import { ResponseDto } from '@libs/types/response.dto'
 @Controller()
@@ -12,10 +13,8 @@ export class AppController {
         return new ResponseDto({ data: result, statusCode: HttpStatus.OK, message: 'Data retrieved successfully' })
     }
 
-    @Get('test-tcp')
-    async testTcp() {
-        const result = await this.appService.testTcp()
-
-        return new ResponseDto({ data: result, statusCode: HttpStatus.OK, message: 'TCP call successful' })
+    @MessagePattern('get_user_info')
+    getUserInfo(data: { userId: string }) {
+        return this.appService.getUserInfo(data.userId)
     }
 }
