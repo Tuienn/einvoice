@@ -1,17 +1,17 @@
-import { BaseConfiguration } from '@libs/configuration/base.config'
-import { BffConfiguration } from '@libs/configuration/bff.config'
+import { BaseEnvConfiguration } from '@libs/configuration/base-env.config'
+import { BffEnvConfiguration } from '@libs/configuration/bff-env.config'
 import { ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
-class Configuration extends BaseConfiguration {
+class Configuration extends BaseEnvConfiguration {
     @ValidateNested()
-    @Type(() => BffConfiguration)
+    @Type(() => BffEnvConfiguration)
     // Validate trong các obj con
-    BFF_CONFIG = new BffConfiguration()
+    BFF_CONFIG = new BffEnvConfiguration()
 }
 
 export const CONFIGURATION = new Configuration()
 
-// Đệ quy validate BaseConfiguration và BffConfiguration
+// Đệ quy validate BaseEnvConfiguration và BffEnvConfiguration
 CONFIGURATION.validate()
 
 export type TConfiguration = typeof CONFIGURATION

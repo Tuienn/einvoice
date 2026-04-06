@@ -1,25 +1,21 @@
 import { Logger } from '@nestjs/common'
-import { IsNotEmpty, IsNumber, IsString, validateSync } from 'class-validator'
+import { IsNotEmpty, IsString, validateSync } from 'class-validator'
 
-export class BaseConfiguration {
+export class BaseEnvConfiguration {
     @IsString()
     NODE_ENV: string
 
     IS_DEV: boolean
 
-    @IsNumber()
-    HTTP_PORT: number
-
     @IsString()
     @IsNotEmpty()
-    GLOBAL_PREFIX: string
+    SERVICE_NAME: string
 
     constructor() {
         // Phần kiểm tra bên trên bằng class-validator có thể không cần dùng vì đang phần đã có giá trị mặc định, nhưng vẫn giữ để đảm bảo tính toàn vẹn của cấu hình
         this.NODE_ENV = process.env['NODE_ENV'] || 'development'
         this.IS_DEV = this.NODE_ENV === 'development'
-        this.HTTP_PORT = Number(process.env['HTTP_PORT']) || 3000
-        this.GLOBAL_PREFIX = process.env['GLOBAL_PREFIX'] || 'api/v1'
+        this.SERVICE_NAME = process.env['SERVICE_NAME'] || 'einvoice'
     }
 
     validate() {

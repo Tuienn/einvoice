@@ -16,7 +16,7 @@ async function bootstrap() {
         }
     })
 
-    const globalPrefix = AppModule.CONFIGURATION.GLOBAL_PREFIX
+    const globalPrefix = AppModule.CONFIGURATION.BFF_CONFIG.HTTP_GLOBAL_PREFIX
     app.setGlobalPrefix(globalPrefix)
     app.useGlobalPipes(new ValidationPipe({ transform: true }))
 
@@ -26,7 +26,7 @@ async function bootstrap() {
         `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT} `
     )
 
-    const port = AppModule.CONFIGURATION.HTTP_PORT
+    const port = AppModule.CONFIGURATION.BFF_CONFIG.HTTP_PORT
     await app.listen(port)
 
     const swaggerConfig = new DocumentBuilder()
