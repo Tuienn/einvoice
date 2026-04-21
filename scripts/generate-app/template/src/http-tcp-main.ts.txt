@@ -45,7 +45,8 @@ async function bootstrap() {
     //NOTE - Khởi động microservices server để nhận TCP request.
     app.startAllMicroservices()
     Logger.log(
-        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT} `
+        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT}`,
+        'Bootstrap'
     )
 
     const swaggerConfig = new DocumentBuilder()
@@ -68,8 +69,8 @@ async function bootstrap() {
     const port = AppModule.CONFIGURATION.BFF_CONFIG.HTTP_PORT
     await app.listen(port)
 
-    Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix} `)
-    Logger.log(`🚀 Swagger documentation is running on: http://localhost:${port}/${globalPrefix}/docs `)
+    Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`, 'Bootstrap')
+    Logger.log(`🚀 Swagger documentation is running on: http://localhost:${port}/${globalPrefix}/docs`, 'Bootstrap')
 }
 
 bootstrap()

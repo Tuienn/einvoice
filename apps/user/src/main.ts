@@ -7,8 +7,8 @@ async function bootstrap() {
     const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
         transport: Transport.TCP,
         options: {
-            host: AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST,
-            port: AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT
+            host: AppModule.CONFIGURATION.USER_CONFIG.TCP_HOST,
+            port: AppModule.CONFIGURATION.USER_CONFIG.TCP_PORT
         }
     })
 
@@ -36,7 +36,7 @@ async function bootstrap() {
     await app.listen()
 
     Logger.log(
-        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.BFF_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.BFF_CONFIG.TCP_PORT}`,
+        `🚀 TCP microservice is running on: ${AppModule.CONFIGURATION.USER_CONFIG.TCP_HOST}:${AppModule.CONFIGURATION.USER_CONFIG.TCP_PORT}`,
         'Bootstrap'
     )
 }
