@@ -32,7 +32,7 @@ export class BaseEnvConfiguration {
         // Phần kiểm tra bên trên bằng class-validator có thể không cần dùng vì đang phần đã có giá trị mặc định, nhưng vẫn giữ để đảm bảo tính toàn vẹn của cấu hình
         this.NODE_ENV = process.env['NODE_ENV'] || 'development'
         this.IS_DEV = this.NODE_ENV === 'development'
-        this.SERVICE_NAME = process.env['SERVICE_NAME'] || 'einvoice'
+        this.SERVICE_NAME = process.env['SERVICE_NAME'] || 'e-voting-backend'
         this.THROTTLE_TTL = Number(process.env['THROTTLE_TTL']) || 60000
         this.THROTTLE_LIMIT = Number(process.env['THROTTLE_LIMIT']) || 100
     }
