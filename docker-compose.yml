@@ -1,0 +1,61 @@
+services:
+    mongo:
+        image: mongo:7
+        container_name: mongodb
+        restart: unless-stopped
+        ports:
+            - '27017:27017'
+        volumes:
+            - mongo_data:/data/db
+            - mongo_keyfile:/data/keyfile
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+        ulimits:
+            nofile:
+                soft: 64000
+                hard: 64000
+        entrypoint:
+            - bash
+            - -c
+            - |
+                if [ ! -f /data/keyfile/mongo-keyfile ]; then
+                  openssl rand -base64 756 > /data/keyfile/mongo-keyfile
+                  chmod 400 /data/keyfile/mongo-keyfile
+                  chown 999:999 /data/keyfile/mongo-keyfile
+                fi
+                exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /data/keyfile/mongo-keyfile
+        healthcheck:
+            test: |
+                mongosh --quiet -u ${MONGO_ROOT_USER:-root} -p ${MONGO_ROOT_PASSWORD:-password} \
+                  --eval "db.adminCommand('ping').ok" | grep -q 1
+            interval: 15s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+
+    redis:
+        image: redis:7.2-alpine
+        container_name: redis
+        restart: unless-stopped
+        ports:
+            - '6379:6379'
+        command: >
+            redis-server
+            --requirepass ${REDIS_PASSWORD:-secret}
+            --maxmemory 512mb
+            --maxmemory-policy allkeys-lru
+            --appendonly yes
+            --databases 16
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-secret}', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+volumes:
+    mongo_data:
+    mongo_keyfile:
+    redis_data:

@@ -26,6 +26,6 @@ export class BffEnvConfiguration {
         this.TCP_HOST = process.env['TCP_HOST'] || 'localhost'
         this.TCP_PORT = Number(process.env['TCP_PORT']) || 3001
         this.USER_TCP_HOST = process.env['USER_TCP_HOST'] || 'localhost'
-        this.USER_TCP_PORT = Number(process.env['USER_TCP_PORT']) || 3002
+        this.USER_TCP_PORT = Number(process.env['USER_TCP_PORT']) || 3302
     }
 }

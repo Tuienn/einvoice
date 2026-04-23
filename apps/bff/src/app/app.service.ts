@@ -5,4 +5,8 @@ import { CONFIGURATION } from '../configuration'
 @Injectable()
 export class AppService {
     constructor(@Inject(`TCP_${CONFIGURATION.SERVICE_NAME}`) private readonly userClient: ClientProxy) {}
+
+    helloWorld() {
+        return this.userClient.send('hello_world', {})
+    }
 }
