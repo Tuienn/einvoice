@@ -1,10 +1,10 @@
 import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common'
 import { AppService } from './app.service'
-import { CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
+import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
 import { ApiBody, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { ResponseDto } from '@libs/types/response.dto'
 import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
-import { MongoIdDto } from '@libs/types/common.dto'
+import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { Public } from '@libs/decorators/public.decorator'
 import { Roles } from '@libs/decorators/roles.decorator'
 
@@ -31,6 +31,50 @@ export class AppController {
             data: result,
             message: 'Voter created successfully',
             statusCode: HttpStatus.CREATED
+        })
+    }
+
+    @Roles('ADMIN')
+    @Post('user/create-bulk-voters')
+    @ApiBody({
+        type: [CreateBulkVotersDto],
+        examples: {
+            example1: {
+                value: {
+                    data: [
+                        { email: 'nguyen@example.com', password: 'password123', name: 'John Doe' },
+                        { email: 'test@gmail.com', password: 'password123', name: 'Test User' }
+                    ]
+                }
+            }
+        }
+    })
+    async createBulkVoters(@Body() dto: CreateBulkVotersDto) {
+        const result = (await this.appService.createBulkVoters(dto)) ?? { count: 0 }
+
+        return new ResponseDto({
+            data: result,
+            message: result.count > 0 ? `${result.count} voters created successfully` : 'No voters created',
+            statusCode: HttpStatus.CREATED
+        })
+    }
+
+    @Roles('ADMIN')
+    @Delete('user/bulk')
+    @ApiBody({
+        type: [MongoIdsDto],
+        examples: {
+            example1: {
+                value: { ids: ['60d0fe4f5311236168a109ca', '60d0fe4f5311236168a109cb'] }
+            }
+        }
+    })
+    async deleteBulkUsersByIds(@Body() dto: MongoIdsDto) {
+        const result = (await this.appService.deleteBulkUsersByIds(dto)) ?? { count: 0 }
+
+        return new ResponseDto({
+            message: result.count > 0 ? `${result.count} users deleted successfully` : 'No users deleted',
+            statusCode: HttpStatus.OK
         })
     }
 

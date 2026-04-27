@@ -1,9 +1,9 @@
 import { Controller } from '@nestjs/common'
 import { AppService } from './app.service'
 import { MessagePattern, Payload } from '@nestjs/microservices'
-import { CreateVoterDto, FilterUsersDto } from '@libs/types/identity/user.dto'
+import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto } from '@libs/types/identity/user.dto'
 import { IDENTITY_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import { MongoIdDto } from '@libs/types/common.dto'
+import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 @Controller()
 export class AppController {
     constructor(private readonly appService: AppService) {}
@@ -41,5 +41,15 @@ export class AppController {
     @MessagePattern(IDENTITY_MESSAGE_PATTERNS.FILTER_USERS)
     async filterUsers(@Payload() dto: FilterUsersDto) {
         return await this.appService.filterUsers(dto)
+    }
+
+    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_VOTERS)
+    async deleteBulkUsersByIds(@Payload() dto: MongoIdsDto) {
+        return await this.appService.deleteBulkUsersByIds(dto)
+    }
+
+    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_VOTERS)
+    async createBulkVoters(@Payload() dto: CreateBulkVotersDto) {
+        return await this.appService.createBulkVoters(dto)
     }
 }

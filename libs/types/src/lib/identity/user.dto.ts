@@ -1,4 +1,13 @@
-import { IsBoolean, IsDefined, IsEmail, IsOptional, MaxLength, MinLength } from 'class-validator'
+import {
+    IsArray,
+    IsBoolean,
+    IsDefined,
+    IsEmail,
+    IsOptional,
+    MaxLength,
+    MinLength,
+    ValidateNested
+} from 'class-validator'
 import {
     invalidDataField,
     missingDataField,
@@ -6,7 +15,7 @@ import {
     maxLengthDataField
 } from '@libs/constants/text.constant'
 import { PaginationQueryDto } from '../common.dto'
-import { Transform } from 'class-transformer'
+import { Transform, Type } from 'class-transformer'
 
 export class CreateVoterDto {
     @IsDefined({ message: missingDataField('email') })
@@ -59,4 +68,12 @@ export class FilterUsersDto extends PaginationQueryDto {
     })
     @IsBoolean({ message: invalidDataField('isActive', 'boolean(true/false)') })
     isActive?: boolean
+}
+
+export class CreateBulkVotersDto {
+    @IsDefined({ message: missingDataField('data') })
+    @IsArray({ message: invalidDataField('data', 'array of Voter') })
+    @ValidateNested({ each: true })
+    @Type(() => CreateVoterDto)
+    data: CreateVoterDto[]
 }

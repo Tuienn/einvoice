@@ -1,10 +1,16 @@
 import { removeUndefinedObj } from '@libs/utils/object.util'
 import { Injectable } from '@nestjs/common'
-import { CreateVoterDto, FilterUsersDto, GetUserByEmailDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
+import {
+    CreateBulkVotersDto,
+    CreateVoterDto,
+    FilterUsersDto,
+    GetUserByEmailDto,
+    UpdateUserByIdDto
+} from '@libs/types/identity/user.dto'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
 import { PrismaService } from '../../infrastructure/prisma/prisma.service'
 import { hash } from 'argon2'
-import { MongoIdDto } from '@libs/types/common.dto'
+import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { PaginationMeta } from '@libs/types/common.type'
 import { User } from '../../../generated/prisma/browser'
 
@@ -139,5 +145,54 @@ export class AppService {
             pageSize: pageSize,
             total
         }
+    }
+
+    async deleteBulkUsersByIds(dto: MongoIdsDto) {
+        const data = await this.prisma.user.deleteMany({
+            where: {
+                id: {
+                    in: dto.ids
+                }
+            }
+        })
+        return data
+    }
+
+    async createBulkVoters(dto: CreateBulkVotersDto) {
+        const emails = dto.data.map((item) => item.email)
+        const existingUsers = await this.prisma.user.findMany({
+            where: {
+                email: {
+                    in: emails
+                }
+            },
+            select: {
+                email: true
+            }
+        })
+        const existingEmails = new Set(existingUsers.map((user) => user.email))
+
+        // Duyệt qua dto.data một lần, vừa lọc vừa hash password
+        const newDtos: { email: string; name: string; password: string }[] = []
+        for (const item of dto.data) {
+            if (!existingEmails.has(item.email)) {
+                const hashedPassword = await hash(item.password)
+                newDtos.push({
+                    email: item.email,
+                    name: item.name,
+                    password: hashedPassword
+                })
+            }
+        }
+
+        if (newDtos.length === 0) {
+            return { count: 0 }
+        }
+
+        const data = await this.prisma.user.createMany({
+            data: newDtos
+        })
+
+        return data
     }
 }

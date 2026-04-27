@@ -1,5 +1,7 @@
 export const IDENTITY_MESSAGE_PATTERNS = {
     CREATE_VOTER: 'identity.create_voter',
+    CREATE_BULK_VOTERS: 'identity.create_bulk_voters',
+    DELETE_BULK_VOTERS: 'identity.delete_bulk_voters',
 
     SIGN_IN: 'identity.sign_in',
     REFRESH_TOKEN: 'identity.refresh_token',

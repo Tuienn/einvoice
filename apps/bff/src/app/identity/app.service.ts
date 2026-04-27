@@ -1,11 +1,11 @@
-import { MongoIdDto } from '@libs/types/common.dto'
+import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
 import { Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { lastValueFrom } from 'rxjs'
 import { CONFIGURATION } from '../../configuration'
 import { IDENTITY_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import { CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
+import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
 
 @Injectable()
 export class AppService {
@@ -38,6 +38,14 @@ export class AppService {
 
     async filterUsers(dto: FilterUsersDto) {
         return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.FILTER_USERS, dto))
+    }
+
+    async deleteBulkUsersByIds(ids: MongoIdsDto) {
+        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_VOTERS, ids))
+    }
+
+    async createBulkVoters(dto: CreateBulkVotersDto) {
+        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_VOTERS, dto))
     }
 
     //SECTION - Identity - Auth

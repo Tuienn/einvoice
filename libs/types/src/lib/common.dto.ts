@@ -1,5 +1,5 @@
 import { invalidDataField, missingDataField } from '@libs/constants/text.constant'
-import { IsDefined, IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator'
+import { IsArray, IsDefined, IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator'
 import { Type } from 'class-transformer'
 
 export class MongoIdDto {
@@ -21,4 +21,11 @@ export class PaginationQueryDto {
     @Min(0, { message: 'Page size must be a non-negative integer' })
     @Max(100, { message: 'Page size must be at most 100' })
     pageSize?: number
+}
+
+export class MongoIdsDto {
+    @IsDefined({ message: missingDataField('ids') })
+    @IsArray({ message: invalidDataField('ids', 'array of string') })
+    @IsMongoId({ each: true, message: invalidDataField('ids', 'MongoId') })
+    ids: string[]
 }
