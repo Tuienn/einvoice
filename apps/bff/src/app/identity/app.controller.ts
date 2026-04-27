@@ -1,9 +1,11 @@
-import { Body, Controller, HttpStatus, Post } from '@nestjs/common'
+import { Body, Controller, Get, HttpStatus, Param, Post } from '@nestjs/common'
 import { AppService } from './app.service'
 import { CreateVoterDto } from '@libs/types/identity/user.dto'
-import { ApiBody, ApiTags } from '@nestjs/swagger'
+import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger'
 import { ResponseDto } from '@libs/types/response.dto'
 import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
+import { MongoIdDto } from '@libs/types/common.dto'
+import { Public } from '@libs/decorators/public.decorator'
 
 @ApiTags('Identity')
 @Controller('identity')
@@ -30,13 +32,29 @@ export class AppController {
         })
     }
 
+    @Get('user/:id')
+    @ApiParam({ name: 'id', type: String, description: 'User ID' })
+    async getUserById(@Param() dto: MongoIdDto) {
+        const result = await this.appService.getUserById(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'User retrieved successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+
     //SECTION - Identity - Auth
+    @Public()
     @Post('auth/sign-in')
     @ApiBody({
         type: SignInDto,
         examples: {
             example1: {
                 value: { email: 'john.doe@example.com', password: 'password123' }
+            },
+            admin: {
+                value: { email: 'admin@example.com', password: '12345678' }
             }
         }
     })

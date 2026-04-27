@@ -1,16 +1,11 @@
-import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common'
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from '@nestjs/cache-manager'
 import { Role } from '../../../generated/prisma/enums'
 import { CONFIGURATION } from '../../configuration'
 import { AUTH_TEXT } from '@libs/constants/text.constant'
-
-type JwtPayload = {
-    sub: string
-    email: string
-    role: Role
-}
+import { JwtPayload } from '@libs/types/identity/auth.type'
 
 @Injectable()
 export class TokenService {
@@ -49,7 +44,6 @@ export class TokenService {
     }
 
     async rotateRefreshToken(oldRefreshToken: string) {
-        Logger.debug(`Rotating refresh token: ${oldRefreshToken}`)
         let payload: JwtPayload
         try {
             payload = await this.jwtService.verifyAsync(oldRefreshToken, {

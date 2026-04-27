@@ -9,6 +9,8 @@ import { HttpThrottlerGuard } from '@libs/guards/throttler.guard'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { IdentityModule } from './identity/app.module'
 import { TcpClientModule } from '@libs/modules/tcp-client.module'
+import { AuthGuard } from '../infrastructure/auth/auth.guard'
+import { JwtModule } from '@nestjs/jwt'
 
 @Module({
     imports: [
@@ -28,12 +30,21 @@ import { TcpClientModule } from '@libs/modules/tcp-client.module'
                 port: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_PORT
             }
         ]),
+        JwtModule.register({}),
         IdentityModule
     ],
     providers: [
         {
             provide: APP_GUARD,
+            useClass: AuthGuard
+        },
+        {
+            provide: APP_GUARD,
             useClass: HttpThrottlerGuard
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: TimeoutInterceptor
         },
         {
             provide: APP_INTERCEPTOR,
@@ -42,10 +53,6 @@ import { TcpClientModule } from '@libs/modules/tcp-client.module'
         {
             provide: APP_INTERCEPTOR,
             useClass: ExceptionInterceptor
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: TimeoutInterceptor
         }
     ]
 })

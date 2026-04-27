@@ -1,3 +1,4 @@
+import { MongoIdDto } from '@libs/types/common.dto'
 import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
 import { Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
@@ -13,8 +14,17 @@ export class AppService {
 
     //SECTION - Identity - User
     async createVoter(dto: CreateVoterDto) {
+        console.log('🚀 ~ AppService ~ createVoter ~ dto:', dto)
         try {
             return await lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_VOTER, dto))
+        } catch (err) {
+            throw rpcErrorToHttp(err)
+        }
+    }
+
+    async getUserById(dto: MongoIdDto) {
+        try {
+            return await lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USER_BY_ID, dto))
         } catch (err) {
             throw rpcErrorToHttp(err)
         }

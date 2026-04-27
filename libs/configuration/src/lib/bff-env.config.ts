@@ -23,22 +23,16 @@ export class BffEnvConfiguration {
     @IsString()
     CORS_ORIGINS: string
 
-    /**
-     * Thời gian cửa sổ rate limit tính bằng milliseconds.
-     * Ví dụ: 60000 = 1 phút
-     * @default 60000
-     */
     @IsNumber()
     @Min(1000)
     THROTTLE_TTL: number
 
-    /**
-     * Số request tối đa được phép trong mỗi cửa sổ THROTTLE_TTL.
-     * @default 100
-     */
     @IsNumber()
     @Min(1)
     THROTTLE_LIMIT: number
+
+    @IsString()
+    JWT_ACCESS_SECRET: string
 
     constructor() {
         this.HTTP_PORT = Number(process.env['HTTP_PORT']) || 3000
@@ -50,5 +44,6 @@ export class BffEnvConfiguration {
         this.CORS_ORIGINS = process.env['CORS_ORIGINS'] || 'http://localhost:5173,http://localhost:3000'
         this.THROTTLE_TTL = Number(process.env['THROTTLE_TTL']) || 60000
         this.THROTTLE_LIMIT = Number(process.env['THROTTLE_LIMIT']) || 100
+        this.JWT_ACCESS_SECRET = process.env['JWT_ACCESS_SECRET'] || 'default_access_secret'
     }
 }

@@ -4,7 +4,8 @@ export const AUTH_TEXT = {
     INVALID_REFRESH_TOKEN: 'Invalid or expired refresh token',
     USER_NOT_FOUND: 'User not found',
     ACCOUNT_DISABLED: 'Account has been disabled',
-    INVALID_CREDENTIALS: 'Invalid email or password'
+    INVALID_CREDENTIALS: 'Invalid email or password',
+    USER_ID_REQUIRED: 'User ID is required in request headers'
 }
 
 export const missingDataField = (field: string) => `${field.charAt(0).toUpperCase() + field.slice(1)} is required`

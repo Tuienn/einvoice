@@ -3,6 +3,7 @@ import { CreateVoterDto, GetUserByEmailDto } from '@libs/types/identity/user.dto
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
 import { PrismaService } from '../../infrastructure/prisma/prisma.service'
 import { hash } from 'argon2'
+import { MongoIdDto } from '@libs/types/common.dto'
 
 @Injectable()
 export class AppService {
@@ -28,6 +29,17 @@ export class AppService {
         return await this.prisma.user.findUnique({
             where: {
                 email: dto.email
+            }
+        })
+    }
+
+    async getUserById(dto: MongoIdDto) {
+        return await this.prisma.user.findUnique({
+            where: {
+                id: dto.id
+            },
+            omit: {
+                password: true
             }
         })
     }
