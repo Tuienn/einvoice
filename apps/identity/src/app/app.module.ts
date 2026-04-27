@@ -1,6 +1,7 @@
+import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { APP_INTERCEPTOR } from '@nestjs/core'
+import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core'
 import { ExceptionInterceptor } from '@libs/interceptors/exception.interceptor'
 import { HttpToRpcExceptionInterceptor } from '@libs/interceptors/http-to-rpc-exception.interceptor'
 import { TimeoutInterceptor } from '@libs/interceptors/timeout.interceptor'
@@ -48,6 +49,10 @@ import { PrismaModule } from '../infrastructure/prisma/prisma.module'
         {
             provide: APP_INTERCEPTOR,
             useClass: TimeoutInterceptor
+        },
+        {
+            provide: APP_PIPE,
+            useClass: CustomValidationPipe
         }
     ]
 })

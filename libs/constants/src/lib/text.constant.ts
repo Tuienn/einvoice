@@ -8,21 +8,19 @@ export const AUTH_TEXT = {
     USER_ID_REQUIRED: 'User ID is required in request headers'
 }
 
-export const missingDataField = (field: string) => `${field.charAt(0).toUpperCase() + field.slice(1)} is required`
+export const missingDataField = (field: string) => `${field} is required`
 
 export const invalidDataField = (field: string, fieldType?: string) =>
-    `${field.charAt(0).toUpperCase() + field.slice(1)} ${fieldType ? `must be in ${fieldType} format` : 'is invalid'}`
+    `${field} ${fieldType ? `must be in ${fieldType} format` : 'is invalid'}`
 
-export const existedDataField = (field: string) => `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
+export const existedDataField = (field: string) => `${field} already exists`
 
-export const minLengthDataField = (field: string, min: number) =>
-    `${field.charAt(0).toUpperCase() + field.slice(1)} must be at least ${min} characters long`
+export const minLengthDataField = (field: string, min: number) => `${field} must be at least ${min} characters long`
 
-export const maxLengthDataField = (field: string, max: number) =>
-    `${field.charAt(0).toUpperCase() + field.slice(1)} must be at most ${max} characters long`
+export const maxLengthDataField = (field: string, max: number) => `${field} must be at most ${max} characters long`
 
 export const rangeLengthDataField = (field: string, min: number, max: number) =>
-    `${field.charAt(0).toUpperCase() + field.slice(1)} must be between ${min} and ${max} characters long`
+    `${field} must be between ${min} and ${max} characters long`
 
 export const enumDataField = (field: string, values: string[]) =>
-    `${field.charAt(0).toUpperCase() + field.slice(1)} must be one of the following values: ${values.join(', ')}`
+    `${field} must be one of the following values: ${values.join(', ')}`

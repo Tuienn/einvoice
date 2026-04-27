@@ -1,8 +1,9 @@
+import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { AuthorizationGuard } from '../infrastructure/auth/authorization.guard'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { CONFIGURATION } from '../configuration'
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core'
 import { HttpLoggerInterceptor } from '@libs/interceptors/http-logger.interceptor'
 import { ExceptionInterceptor } from '@libs/interceptors/exception.interceptor'
 import { TimeoutInterceptor } from '@libs/interceptors/timeout.interceptor'
@@ -63,6 +64,10 @@ import { JwtModule } from '@nestjs/jwt'
         {
             provide: APP_GUARD,
             useClass: AuthorizationGuard
+        },
+        {
+            provide: APP_PIPE,
+            useClass: CustomValidationPipe
         }
     ]
 })

@@ -1,4 +1,4 @@
-import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app/app.module'
 import { MicroserviceOptions, Transport } from '@nestjs/microservices'
@@ -14,25 +14,6 @@ async function bootstrap() {
     })
 
     app.enableShutdownHooks() //NOTE - Kích hoạt lifecycle hook onModuleDestroy để có thể đóng kết nối TCP client khi ứng dụng tắt
-    app.useGlobalPipes(
-        new ValidationPipe({
-            transform: true,
-            whitelist: true, // tự động loại bỏ field thừa
-            forbidNonWhitelisted: true, // báo lỗi nếu client gửi field không mong muốn
-            stopAtFirstError: true, // dừng validation sau lỗi đầu tiên
-            forbidUnknownValues: true, // báo lỗi nếu giá trị undefined/null/rỗng
-            exceptionFactory: (errors) => {
-                return new BadRequestException(
-                    errors
-                        .map((e) => {
-                            const constraints = e.constraints ? Object.values(e.constraints).join(', ') : ''
-                            return `${e.property} - ${constraints}`
-                        })
-                        .join('; ')
-                )
-            }
-        })
-    )
 
     await app.listen()
 
