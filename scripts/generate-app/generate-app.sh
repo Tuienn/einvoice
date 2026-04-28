@@ -183,12 +183,10 @@ done < <(find "$APP_DIR" -type f -name "*.txt")
 if [ "$APP_MODE" = "tcp" ]; then
     cp "$APP_DIR/src/only-tcp-main.ts" "$APP_DIR/src/main.ts"
     cp "$APP_DIR/src/app/only-tcp-app.module.ts" "$APP_DIR/src/app/app.module.ts"
-else
-    cp "$APP_DIR/src/http-tcp-main.ts" "$APP_DIR/src/main.ts"
 fi
 
 # Cleanup helper template files from generated app
-rm -f "$APP_DIR/src/http-tcp-main.ts" "$APP_DIR/src/only-tcp-main.ts" "$APP_DIR/src/app/only-tcp-app.module.ts"
+rm -f "$APP_DIR/src/only-tcp-main.ts" "$APP_DIR/src/app/only-tcp-app.module.ts"
 
 # ── Step 2: Copy & rename env config in libs ─────────────────────────────────
 

@@ -1,14 +1,14 @@
+import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { ConfigModule } from '@nestjs/config'
 import { CONFIGURATION } from '../configuration'
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core'
 import { HttpLoggerInterceptor } from '@libs/interceptors/http-logger.interceptor'
-import { ExceptionInterceptor } from '@libs/interceptors/exception.interceptor'
+import { ExceptionFilterHandler } from '@libs/filters/exception.filter'
 import { TimeoutInterceptor } from '@libs/interceptors/timeout.interceptor'
 import { HttpThrottlerGuard } from '@libs/guards/throttler.guard'
-import { ClientsModule, Transport } from '@nestjs/microservices'
 import { ThrottlerModule } from '@nestjs/throttler'
 
 @Module({
@@ -19,17 +19,6 @@ import { ThrottlerModule } from '@nestjs/throttler'
             {
                 ttl: CONFIGURATION.BFF_CONFIG.THROTTLE_TTL,
                 limit: CONFIGURATION.BFF_CONFIG.THROTTLE_LIMIT
-            }
-        ]),
-        //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
-        ClientsModule.register([
-            {
-                name: `TCP_${CONFIGURATION.SERVICE_NAME}`,
-                transport: Transport.TCP,
-                options: {
-                    host: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_HOST,
-                    port: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_PORT
-                }
             }
         ])
     ],
@@ -45,12 +34,16 @@ import { ThrottlerModule } from '@nestjs/throttler'
             useClass: HttpLoggerInterceptor
         },
         {
-            provide: APP_INTERCEPTOR,
-            useClass: ExceptionInterceptor
+            provide: APP_FILTER,
+            useClass: ExceptionFilterHandler
         },
         {
             provide: APP_INTERCEPTOR,
             useClass: TimeoutInterceptor
+        },
+        {
+            provide: APP_PIPE,
+            useClass: CustomValidationPipe
         }
     ]
 })

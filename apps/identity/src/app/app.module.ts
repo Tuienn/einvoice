@@ -9,20 +9,12 @@ import { TcpLoggerInterceptor } from '@libs/interceptors/tcp-logger.interceptor'
 import { CONFIGURATION } from '../configuration'
 import { UserModule } from './user/app.module'
 import { AuthModule } from './auth/app.module'
-import { TcpClientModule } from '@libs/modules/tcp-client.module'
 import { RedisCacheModule } from '@libs/modules/redis-cache.module'
 import { PrismaModule } from '../infrastructure/prisma/prisma.module'
 
 @Module({
     imports: [
         ConfigModule.forRoot({ load: [() => CONFIGURATION] }),
-        TcpClientModule.register([
-            {
-                serviceName: CONFIGURATION.SERVICE_NAME,
-                host: CONFIGURATION.IDENTITY_CONFIG.ELECTION_TCP_HOST,
-                port: CONFIGURATION.IDENTITY_CONFIG.ELECTION_TCP_PORT
-            }
-        ]),
         RedisCacheModule.register({
             ttl: CONFIGURATION.IDENTITY_CONFIG.REDIS_CACHE_TTL,
             host: CONFIGURATION.IDENTITY_CONFIG.REDIS_HOST,

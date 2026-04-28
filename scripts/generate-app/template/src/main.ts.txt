@@ -1,4 +1,4 @@
-import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common'
+import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app/app.module'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
@@ -19,7 +19,7 @@ async function bootstrap() {
         maxAge: 3600 // Cache preflight 1 giờ
     })
 
-    app.use(helmet(getHelmetConfig()))
+    app.use(helmet(getHelmetConfig(!CONFIGURATION.IS_DEV)))
 
     //NOTE - Không sử dụng hàm NestFactory.createMicroservice vì muốn chạy cả HTTP server và TCP microservice trong cùng một ứng dụng NestJS, thay vì tách ra thành hai ứng dụng riêng biệt.
     app.connectMicroservice<MicroserviceOptions>(
@@ -37,25 +37,6 @@ async function bootstrap() {
     app.setGlobalPrefix(globalPrefix)
 
     app.enableShutdownHooks() //NOTE - Kích hoạt lifecycle hook onModuleDestroy để có thể đóng kết nối TCP client khi ứng dụng tắt
-    app.useGlobalPipes(
-        new ValidationPipe({
-            transform: true,
-            whitelist: true, // tự động loại bỏ field thừa
-            forbidNonWhitelisted: true, // báo lỗi nếu client gửi field không mong muốn
-            stopAtFirstError: true, // dừng validation sau lỗi đầu tiên
-            forbidUnknownValues: true, // báo lỗi nếu giá trị undefined/null/rỗng
-            exceptionFactory: (errors) => {
-                return new BadRequestException(
-                    errors
-                        .map((e) => {
-                            const constraints = e.constraints ? Object.values(e.constraints).join(', ') : ''
-                            return `${e.property} - ${constraints}`
-                        })
-                        .join('; ')
-                )
-            }
-        })
-    )
 
     //NOTE - Khởi động microservices server để nhận TCP request.
     app.startAllMicroservices()
@@ -68,18 +49,26 @@ async function bootstrap() {
         .setTitle('BFF API')
         .setDescription('BFF API documentation')
         .setVersion('1.0')
-        .addTag('bff')
-        .addBearerAuth({
-            type: 'http',
-            in: 'header',
-            name: 'Authorization',
-            scheme: 'bearer',
-            bearerFormat: 'JWT'
-        })
+        .addBearerAuth(
+            {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'JWT',
+                name: 'Authorization',
+                description: 'Paste access token only. Swagger will add the Bearer prefix automatically.',
+                in: 'header'
+            },
+            'access-token' // Tên scheme, dùng lại trong decorator
+        )
+        .addSecurityRequirements('access-token')
         .build()
 
     const document = SwaggerModule.createDocument(app, swaggerConfig)
-    SwaggerModule.setup(`${globalPrefix}/docs`, app, document)
+    SwaggerModule.setup(`${globalPrefix}/docs`, app, document, {
+        swaggerOptions: {
+            persistAuthorization: true
+        }
+    })
 
     const port = CONFIGURATION.BFF_CONFIG.HTTP_PORT
     await app.listen(port)

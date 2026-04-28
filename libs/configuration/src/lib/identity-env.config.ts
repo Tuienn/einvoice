@@ -8,12 +8,6 @@ export class IdentityEnvConfiguration {
     TCP_PORT: number
 
     @IsString()
-    ELECTION_TCP_HOST: string
-
-    @IsNumber()
-    ELECTION_TCP_PORT: number
-
-    @IsString()
     DEFAULT_ADMIN_EMAIL: string
 
     @IsString()
@@ -46,8 +40,6 @@ export class IdentityEnvConfiguration {
     constructor() {
         this.TCP_HOST = process.env['TCP_HOST'] || 'localhost'
         this.TCP_PORT = Number(process.env['TCP_PORT']) || 3302
-        this.ELECTION_TCP_HOST = process.env['ELECTION_TCP_HOST'] || 'localhost'
-        this.ELECTION_TCP_PORT = Number(process.env['ELECTION_TCP_PORT']) || 3303
         this.DEFAULT_ADMIN_EMAIL = process.env['DEFAULT_ADMIN_EMAIL'] || 'admin@example.com'
         this.DEFAULT_ADMIN_PASSWORD = process.env['DEFAULT_ADMIN_PASSWORD'] || '12345678'
         this.REDIS_CACHE_TTL = Number(process.env['REDIS_CACHE_TTL']) || 60000
