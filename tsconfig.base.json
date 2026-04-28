@@ -27,7 +27,8 @@
             "@libs/decorators/*": ["libs/decorators/src/lib/*"],
             "@libs/modules/*": ["libs/modules/src/lib/*"],
             "@libs/pipes/*": ["libs/pipes/src/lib/*"],
-            "@libs/filters/*": ["libs/filters/src/lib/*"]
+            "@libs/filters/*": ["libs/filters/src/lib/*"],
+            "@libs/schnorr-blind": ["libs/schnorr-blind/src/index.ts"]
         }
     },
     "exclude": ["node_modules", "tmp"]
