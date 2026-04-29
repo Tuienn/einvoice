@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'VOTER'
+export type Role = 'ADMIN' | 'VOTER' | 'CANDIDATE'
 
 export type JwtPayload = {
     sub: string

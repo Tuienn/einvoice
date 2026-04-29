@@ -1,16 +1,16 @@
 import { Controller } from '@nestjs/common'
 import { AppService } from './app.service'
 import { MessagePattern, Payload } from '@nestjs/microservices'
-import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto } from '@libs/types/identity/user.dto'
+import { CreateBulkUsersDto, CreateUserDto, FilterUsersDto } from '@libs/types/identity/user.dto'
 import { IDENTITY_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 @Controller()
 export class AppController {
     constructor(private readonly appService: AppService) {}
 
-    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.CREATE_VOTER)
-    async createVoter(@Payload() dto: CreateVoterDto) {
-        return await this.appService.createVoter(dto)
+    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.CREATE_USER)
+    async createUser(@Payload() dto: CreateUserDto) {
+        return await this.appService.createUser(dto)
     }
 
     @MessagePattern(IDENTITY_MESSAGE_PATTERNS.GET_USER_BY_ID)
@@ -34,7 +34,7 @@ export class AppController {
     }
 
     @MessagePattern(IDENTITY_MESSAGE_PATTERNS.UPDATE_USER_BY_ID)
-    async updateUserById(@Payload() dto: MongoIdDto & CreateVoterDto) {
+    async updateUserById(@Payload() dto: MongoIdDto & CreateUserDto) {
         return await this.appService.updateUserById(dto)
     }
 
@@ -43,13 +43,13 @@ export class AppController {
         return await this.appService.filterUsers(dto)
     }
 
-    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_VOTERS)
+    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_USERS)
     async deleteBulkUsersByIds(@Payload() dto: MongoIdsDto) {
         return await this.appService.deleteBulkUsersByIds(dto)
     }
 
-    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_VOTERS)
-    async createBulkVoters(@Payload() dto: CreateBulkVotersDto) {
-        return await this.appService.createBulkVoters(dto)
+    @MessagePattern(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_USERS)
+    async createBulkUsers(@Payload() dto: CreateBulkUsersDto) {
+        return await this.appService.createBulkUsers(dto)
     }
 }

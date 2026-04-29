@@ -17,6 +17,7 @@ datasource db {
 enum Role {
   ADMIN
   VOTER
+  CANDIDATE
 }
 
 model User {
@@ -30,5 +31,6 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([role])
   @@map("users")
 }

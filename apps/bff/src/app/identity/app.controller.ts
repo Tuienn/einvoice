@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common'
 import { AppService } from './app.service'
-import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
+import { CreateBulkUsersDto, CreateUserDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
 import { ApiBody, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { ResponseDto } from '@libs/types/response.dto'
 import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
@@ -15,16 +15,22 @@ export class AppController {
 
     //SECTION - Identity - User
     @Roles('ADMIN')
-    @Post('user/create-voter')
+    @Post('user/create-user')
     @ApiBody({
-        type: CreateVoterDto,
+        type: CreateUserDto,
         examples: {
-            example1: {
-                value: { email: 'john.doe@example.com', password: 'password123', name: 'John Doe' }
+            voter: {
+                value: { email: 'john.doe@example.com', password: 'password123', name: 'John Doe', role: 'VOTER' }
+            },
+            candidate: {
+                value: { email: 'jane.doe@example.com', password: 'password123', name: 'Jane Doe', role: 'CANDIDATE' }
+            },
+            admin: {
+                value: { email: 'admin@example.com', password: '12345678', name: 'Admin', role: 'ADMIN' }
             }
         }
     })
-    async createVoter(@Body() data: CreateVoterDto) {
+    async createVoter(@Body() data: CreateUserDto) {
         const result = await this.appService.createVoter(data)
 
         return new ResponseDto({
@@ -35,9 +41,9 @@ export class AppController {
     }
 
     @Roles('ADMIN')
-    @Post('user/create-bulk-voters')
+    @Post('user/create-bulk-users')
     @ApiBody({
-        type: [CreateBulkVotersDto],
+        type: [CreateBulkUsersDto],
         examples: {
             example1: {
                 value: {
@@ -49,12 +55,12 @@ export class AppController {
             }
         }
     })
-    async createBulkVoters(@Body() dto: CreateBulkVotersDto) {
+    async createBulkVoters(@Body() dto: CreateBulkUsersDto) {
         const result = (await this.appService.createBulkVoters(dto)) ?? { count: 0 }
 
         return new ResponseDto({
             data: result,
-            message: result.count > 0 ? `${result.count} voters created successfully` : 'No voters created',
+            message: result.count > 0 ? `${result.count} users created successfully` : 'No users created',
             statusCode: HttpStatus.CREATED
         })
     }
@@ -109,6 +115,7 @@ export class AppController {
     @ApiQuery({ name: 'isActive', required: false, type: Boolean })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'pageSize', required: false, type: Number })
+    @ApiQuery({ name: 'role', required: false, type: String, enum: ['VOTER', 'CANDIDATE', 'ADMIN'] })
     async filterUsers(@Query() dto: FilterUsersDto) {
         const result = await this.appService.filterUsers(dto)
 
@@ -138,8 +145,11 @@ export class AppController {
     @ApiBody({
         type: UpdateUserByIdDto,
         examples: {
-            example1: {
+            voter: {
                 value: { email: 'john.doe@example.com', name: 'John Doe' }
+            },
+            candidate: {
+                value: { email: 'jane.doe@example.com', name: 'Jane Doe', role: 'CANDIDATE' }
             }
         }
     })
@@ -171,7 +181,7 @@ export class AppController {
     @ApiBody({
         type: SignInDto,
         examples: {
-            example1: {
+            voter: {
                 value: { email: 'john.doe@example.com', password: 'password123' }
             },
             admin: {

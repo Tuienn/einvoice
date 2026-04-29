@@ -5,15 +5,15 @@ import { ClientProxy } from '@nestjs/microservices'
 import { lastValueFrom } from 'rxjs'
 import { CONFIGURATION } from '../../configuration'
 import { IDENTITY_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import { CreateBulkVotersDto, CreateVoterDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
+import { CreateBulkUsersDto, CreateUserDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
 
 @Injectable()
 export class AppService {
     constructor(@Inject(`TCP_${CONFIGURATION.SERVICE_NAME}`) private readonly userClient: ClientProxy) {}
 
     //SECTION - Identity - User
-    async createVoter(dto: CreateVoterDto) {
-        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_VOTER, dto))
+    async createVoter(dto: CreateUserDto) {
+        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_USER, dto))
     }
 
     async getUserById(dto: MongoIdDto) {
@@ -41,11 +41,11 @@ export class AppService {
     }
 
     async deleteBulkUsersByIds(ids: MongoIdsDto) {
-        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_VOTERS, ids))
+        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_USERS, ids))
     }
 
-    async createBulkVoters(dto: CreateBulkVotersDto) {
-        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_VOTERS, dto))
+    async createBulkVoters(dto: CreateBulkUsersDto) {
+        return lastValueFrom(this.userClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_USERS, dto))
     }
 
     //SECTION - Identity - Auth

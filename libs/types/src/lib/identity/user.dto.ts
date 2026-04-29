@@ -3,9 +3,11 @@ import {
     IsBoolean,
     IsDefined,
     IsEmail,
+    IsEnum,
     IsOptional,
     MaxLength,
     MinLength,
+    NotEquals,
     ValidateNested
 } from 'class-validator'
 import {
@@ -17,7 +19,7 @@ import {
 import { PaginationQueryDto } from '../common.dto'
 import { Transform, Type } from 'class-transformer'
 
-export class CreateVoterDto {
+export class CreateUserDto {
     @IsDefined({ message: missingDataField('email') })
     @IsEmail({}, { message: invalidDataField('email') })
     email: string
@@ -31,6 +33,11 @@ export class CreateVoterDto {
     @MinLength(2, { message: minLengthDataField('name', 2) })
     @MaxLength(100, { message: maxLengthDataField('name', 100) })
     name: string
+
+    @IsOptional()
+    @IsEnum(['VOTER', 'CANDIDATE', 'ADMIN'], { message: invalidDataField('role', 'VOTER | CANDIDATE | ADMIN') })
+    @NotEquals('ADMIN', { message: 'Cannot create user with role ADMIN' })
+    role?: string
 }
 
 export class GetUserByEmailDto {
@@ -68,12 +75,16 @@ export class FilterUsersDto extends PaginationQueryDto {
     })
     @IsBoolean({ message: invalidDataField('isActive', 'boolean(true/false)') })
     isActive?: boolean
+
+    @IsOptional()
+    @IsEnum(['VOTER', 'CANDIDATE', 'ADMIN'], { message: invalidDataField('role', 'VOTER | CANDIDATE | ADMIN') })
+    role?: string
 }
 
-export class CreateBulkVotersDto {
+export class CreateBulkUsersDto {
     @IsDefined({ message: missingDataField('data') })
-    @IsArray({ message: invalidDataField('data', 'array of Voter') })
+    @IsArray({ message: invalidDataField('data', 'array of User') })
     @ValidateNested({ each: true })
-    @Type(() => CreateVoterDto)
-    data: CreateVoterDto[]
+    @Type(() => CreateUserDto)
+    data: CreateUserDto[]
 }

@@ -1,8 +1,8 @@
 import { removeUndefinedObj } from '@libs/utils/object.util'
 import { Injectable } from '@nestjs/common'
 import {
-    CreateBulkVotersDto,
-    CreateVoterDto,
+    CreateBulkUsersDto,
+    CreateUserDto,
     FilterUsersDto,
     GetUserByEmailDto,
     UpdateUserByIdDto
@@ -12,13 +12,13 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service'
 import { hash } from 'argon2'
 import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { PaginationMeta } from '@libs/types/common.type'
-import { User } from '../../../generated/prisma/browser'
+import { Role, User } from '../../../generated/prisma/browser'
 
 @Injectable()
 export class AppService {
     constructor(private prisma: PrismaService) {}
 
-    async createVoter(dto: CreateVoterDto) {
+    async createUser(dto: CreateUserDto) {
         const hashPassword = await hash(dto.password)
 
         try {
@@ -26,7 +26,11 @@ export class AppService {
                 data: {
                     email: dto.email,
                     password: hashPassword,
-                    name: dto.name
+                    name: dto.name,
+                    role: dto.role as Role
+                },
+                omit: {
+                    password: true
                 }
             })
         } catch (e) {
@@ -119,7 +123,7 @@ export class AppService {
             data: Omit<User, 'password'>[]
         } & PaginationMeta
     > {
-        const { email, name, isActive, page = 0, pageSize = 10 } = dto ?? {}
+        const { email, name, isActive, role, page = 0, pageSize = 10 } = dto ?? {}
 
         const [data, total] = await this.prisma.$transaction([
             this.prisma.user.findMany({
@@ -127,7 +131,8 @@ export class AppService {
                 where: removeUndefinedObj({
                     email: email ? { contains: email, mode: 'insensitive' } : undefined,
                     name: name ? { contains: name, mode: 'insensitive' } : undefined,
-                    isActive: isActive
+                    isActive: isActive,
+                    role: role ? { equals: role as Role } : undefined
                 }),
                 omit: {
                     password: true
@@ -158,7 +163,7 @@ export class AppService {
         return data
     }
 
-    async createBulkVoters(dto: CreateBulkVotersDto) {
+    async createBulkUsers(dto: CreateBulkUsersDto) {
         const emails = dto.data.map((item) => item.email)
         const existingUsers = await this.prisma.user.findMany({
             where: {
