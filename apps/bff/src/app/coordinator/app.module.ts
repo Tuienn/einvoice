@@ -8,4 +8,4 @@ import { AppService } from './app.service'
     providers: [AppService],
     exports: [AppService]
 })
-export class IdentityModule {}
+export class CoordinatorModule {}

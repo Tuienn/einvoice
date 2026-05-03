@@ -1,6 +1,11 @@
 // Decorator tiện lợi để lấy thông tin user từ header
 import { createParamDecorator, ExecutionContext } from '@nestjs/common'
-import { RequestWithUser } from '@libs/types/identity/auth.type'
+
+type RequestWithUser = {
+    userId: string
+    email: string
+    role: string
+}
 
 export const CurrentUser = createParamDecorator((_data: unknown, ctx: ExecutionContext): RequestWithUser => {
     const request = ctx.switchToHttp().getRequest()

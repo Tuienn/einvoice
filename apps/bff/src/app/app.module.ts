@@ -14,6 +14,7 @@ import { TcpClientModule } from '@libs/modules/tcp-client.module'
 import { AuthenticatorGuard } from '../infrastructure/auth/authenticator.guard'
 import { JwtModule } from '@nestjs/jwt'
 import { ExceptionFilterHandler } from '@libs/filters/exception.filter'
+import { CoordinatorModule } from './coordinator/app.module'
 
 @Module({
     imports: [
@@ -28,13 +29,19 @@ import { ExceptionFilterHandler } from '@libs/filters/exception.filter'
         //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
         TcpClientModule.register([
             {
-                serviceName: CONFIGURATION.SERVICE_NAME,
+                serviceName: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_NAME,
                 host: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_HOST,
                 port: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_PORT
+            },
+            {
+                serviceName: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_NAME,
+                host: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_HOST,
+                port: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_PORT
             }
         ]),
         JwtModule.register({}),
-        IdentityModule
+        IdentityModule,
+        CoordinatorModule
     ],
     providers: [
         {

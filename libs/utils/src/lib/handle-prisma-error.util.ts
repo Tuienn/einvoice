@@ -25,6 +25,6 @@ export const handlePrismaError = (e: unknown): never => {
 
     throw new BadRequestException({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Database operation failed'
+        message: (e as Error).message ?? 'Database operation failed'
     })
 }

@@ -13,6 +13,9 @@ export const missingDataField = (field: string) => `${field} is required`
 export const invalidDataField = (field: string, fieldType?: string) =>
     `${field} ${fieldType ? `must be in ${fieldType} format` : 'is invalid'}`
 
+export const invalidDataFieldInArray = (field: string, fieldType?: string) =>
+    `each value in ${field} array ${fieldType ? `must be in ${fieldType} format` : 'is invalid'}`
+
 export const existedDataField = (field: string) => `${field} already exists`
 
 export const minLengthDataField = (field: string, min: number) => `${field} must be at least ${min} characters long`

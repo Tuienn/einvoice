@@ -5,7 +5,6 @@ import { AppService } from './app.service'
 @Global()
 @Module({
     controllers: [AppController],
-    providers: [AppService],
-    exports: [AppService]
+    providers: [AppService]
 })
-export class IdentityModule {}
+export class ElectionModule {}

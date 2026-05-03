@@ -1,0 +1,140 @@
+import { ApiBody, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common'
+import { AppService } from './app.service'
+import { CreateElectionDto, FilterElectionsDto, VoterIdsDto } from '@libs/types/coordinator/election.dto'
+import { Public } from '@libs/decorators/public.decorator'
+import { Roles } from '@libs/decorators/roles.decorator'
+import { ResponseDto } from '@libs/types/response.dto'
+import { MongoIdDto } from '@libs/types/common.dto'
+
+@ApiTags('Coordinator')
+@Controller('coordinator')
+export class AppController {
+    constructor(private readonly appService: AppService) {}
+
+    //SECTION - Coordinator - Election
+    @Public()
+    @Get('election/filter')
+    @ApiQuery({ name: 'name', required: false, type: String })
+    @ApiQuery({ name: 'status', required: false, type: String, enum: ['PENDING', 'ACTIVE', 'COMPLETED'] })
+    @ApiQuery({ name: 'startDate', required: false, type: String, format: 'date-time' })
+    @ApiQuery({ name: 'endDate', required: false, type: String, format: 'date-time' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'pageSize', required: false, type: Number })
+    async filterElections(@Query() dto: FilterElectionsDto) {
+        const result = await this.appService.filterElections(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Elections retrieved successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+
+    @Roles('ADMIN')
+    @Post('election/create')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiBody({
+        type: CreateElectionDto,
+        examples: {
+            example1: {
+                value: { name: 'Election 1', candidateIds: ['69f5b5475c48c621a0681cbc', '69ef6ddc1577a677366cd218'] }
+            }
+        }
+    })
+    async createElection(@Body() dto: CreateElectionDto) {
+        const result = await this.appService.createElection(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Election created successfully',
+            statusCode: HttpStatus.CREATED
+        })
+    }
+
+    @Roles('ADMIN')
+    @Post('election/:id/add-voters')
+    @ApiParam({
+        name: 'id',
+        type: String,
+        description: 'Election ID',
+        examples: { example1: { value: '69f5b5475c48c621a0681cbc' } }
+    })
+    @ApiBody({
+        type: VoterIdsDto,
+        examples: {
+            example1: { value: { voterIds: ['69f5b5475c48c621a0681cbc', '69ef6ddc1577a677366cd218'] } }
+        }
+    })
+    async addVotersToElection(@Param() electionIdDto: MongoIdDto, @Body() voterIdsDto: VoterIdsDto) {
+        const result = await this.appService.addVotersToElection({
+            id: electionIdDto.id,
+            voterIds: voterIdsDto.voterIds
+        })
+
+        return new ResponseDto({
+            data: result,
+            message:
+                result.electionVoters && result.electionVoters.length > 0
+                    ? `${result.electionVoters.length} voters added to election successfully`
+                    : 'No voters added to election',
+            statusCode: HttpStatus.OK
+        })
+    }
+
+    @Roles('ADMIN')
+    @Patch('election/:id/start')
+    @ApiParam({
+        name: 'id',
+        type: String,
+        description: 'Election ID',
+        examples: {
+            example1: { value: '69f5b5475c48c621a0681cbc' }
+        }
+    })
+    async startElection(@Param() dto: MongoIdDto) {
+        const result = await this.appService.startElection(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Election started successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+
+    @Roles('ADMIN')
+    @Patch('election/:id/end')
+    @ApiParam({
+        name: 'id',
+        type: String,
+        description: 'Election ID',
+        examples: { example1: { value: '69f5b5475c48c621a0681cbc' } }
+    })
+    async endElection(@Param() dto: MongoIdDto) {
+        const result = await this.appService.endElection(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Election ended successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+
+    @Roles('ADMIN')
+    @Get('election/:id')
+    @ApiParam({
+        name: 'id',
+        type: String,
+        description: 'Election ID',
+        examples: { example1: { value: '69f5b5475c48c621a0681cbc' } }
+    })
+    async getElectionById(@Param() dto: MongoIdDto) {
+        const result = await this.appService.getElectionById(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Election retrieved successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+}

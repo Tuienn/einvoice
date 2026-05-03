@@ -5,6 +5,7 @@ import {
     CreateUserDto,
     FilterUsersDto,
     GetUserByEmailDto,
+    RoleDto,
     UpdateUserByIdDto
 } from '@libs/types/identity/user.dto'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
@@ -199,5 +200,19 @@ export class AppService {
         })
 
         return data
+    }
+
+    async getUsersByMongoIds(dto: MongoIdsDto & RoleDto) {
+        return this.prisma.user.findMany({
+            where: removeUndefinedObj({
+                id: {
+                    in: dto.ids
+                },
+                role: dto.role
+            }),
+            omit: {
+                password: true
+            }
+        })
     }
 }

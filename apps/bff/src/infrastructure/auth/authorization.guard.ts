@@ -1,8 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { Role } from '@libs/types/identity/auth.type'
-
-const ROLES_KEY = 'roles'
+import { ROLES_KEY } from '@libs/constants/common.constant'
 
 @Injectable()
 export class AuthorizationGuard implements CanActivate {

@@ -7,6 +7,7 @@ import { RefreshTokenDto, SignInDto } from '@libs/types/identity/auth.dto'
 import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { Public } from '@libs/decorators/public.decorator'
 import { Roles } from '@libs/decorators/roles.decorator'
+import { ROLE_ARRAY } from '@libs/constants/common.constant'
 
 @ApiTags('Identity')
 @Controller('identity')
@@ -20,10 +21,10 @@ export class AppController {
         type: CreateUserDto,
         examples: {
             voter: {
-                value: { email: 'john.doe@example.com', password: 'password123', name: 'John Doe', role: 'VOTER' }
+                value: { email: 'voter@example.com', password: 'password123', name: 'John Doe', role: 'VOTER' }
             },
             candidate: {
-                value: { email: 'jane.doe@example.com', password: 'password123', name: 'Jane Doe', role: 'CANDIDATE' }
+                value: { email: 'candidate@example.com', password: 'password123', name: 'Jane Doe', role: 'CANDIDATE' }
             },
             admin: {
                 value: { email: 'admin@example.com', password: '12345678', name: 'Admin', role: 'ADMIN' }
@@ -115,7 +116,7 @@ export class AppController {
     @ApiQuery({ name: 'isActive', required: false, type: Boolean })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'pageSize', required: false, type: Number })
-    @ApiQuery({ name: 'role', required: false, type: String, enum: ['VOTER', 'CANDIDATE', 'ADMIN'] })
+    @ApiQuery({ name: 'role', required: false, type: String, enum: ROLE_ARRAY })
     async filterUsers(@Query() dto: FilterUsersDto) {
         const result = await this.appService.filterUsers(dto)
 
@@ -146,10 +147,10 @@ export class AppController {
         type: UpdateUserByIdDto,
         examples: {
             voter: {
-                value: { email: 'john.doe@example.com', name: 'John Doe' }
+                value: { email: 'voter@example.com', name: 'John Doe' }
             },
             candidate: {
-                value: { email: 'jane.doe@example.com', name: 'Jane Doe', role: 'CANDIDATE' }
+                value: { email: 'candidate@example.com', name: 'Jane Doe', role: 'CANDIDATE' }
             }
         }
     })
@@ -182,7 +183,7 @@ export class AppController {
         type: SignInDto,
         examples: {
             voter: {
-                value: { email: 'john.doe@example.com', password: 'password123' }
+                value: { email: 'voter@example.com', password: 'password123' }
             },
             admin: {
                 value: { email: 'admin@example.com', password: '12345678' }
