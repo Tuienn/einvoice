@@ -45,5 +45,6 @@ Thumbs.db
 .claude/settings.local.json
 
 .env
+.node*.env
 
 /apps/*/generated/prisma

@@ -94,7 +94,7 @@ export class AppService {
 
     async enableUserById(dto: MongoIdDto) {
         try {
-            return await this.prisma.user.update({
+            const user = await this.prisma.user.update({
                 where: {
                     id: dto.id
                 },
@@ -102,6 +102,10 @@ export class AppService {
                     isActive: true
                 }
             })
+
+            await this.cacheManager.del(`blacklist:user:${dto.id}`)
+
+            return user
         } catch (e) {
             handlePrismaError(e)
         }
