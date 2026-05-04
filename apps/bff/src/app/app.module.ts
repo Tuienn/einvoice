@@ -1,3 +1,4 @@
+import { RedisCacheModule } from '@libs/modules/redis-cache.module'
 import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { AuthorizationGuard } from '../infrastructure/auth/authorization.guard'
 import { Module } from '@nestjs/common'
@@ -26,6 +27,12 @@ import { CoordinatorModule } from './coordinator/app.module'
                 limit: CONFIGURATION.BFF_CONFIG.THROTTLE_LIMIT
             }
         ]),
+        RedisCacheModule.register({
+            ttl: CONFIGURATION.BFF_CONFIG.REDIS_CACHE_TTL,
+            host: CONFIGURATION.BFF_CONFIG.REDIS_HOST,
+            port: CONFIGURATION.BFF_CONFIG.REDIS_PORT,
+            password: CONFIGURATION.BFF_CONFIG.REDIS_PASSWORD
+        }),
         //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
         TcpClientModule.register([
             {

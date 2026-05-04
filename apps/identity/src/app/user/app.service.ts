@@ -1,5 +1,5 @@
 import { removeUndefinedObj } from '@libs/utils/object.util'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import {
     CreateBulkUsersDto,
     CreateUserDto,
@@ -14,10 +14,25 @@ import { hash } from 'argon2'
 import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { PaginationMeta } from '@libs/types/common.type'
 import { Role, User } from '../../../generated/prisma/browser'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
+import { CONFIGURATION } from '../../configuration'
 
 @Injectable()
 export class AppService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    ) {}
+
+    private async addUserToBlacklist(userId: string) {
+        //Chuẩn hơn sẽ dùng TTL của blacklist entry = thời gian còn lại của access token và luôn >0 do đã qua được wtService.verify ở authenticator.guard
+
+        await this.cacheManager.set(
+            `blacklist:user:${userId}`,
+            true,
+            CONFIGURATION.IDENTITY_CONFIG.JWT_ACCESS_EXPIRES_IN * 1000
+        )
+    }
 
     async createUser(dto: CreateUserDto) {
         const hashPassword = await hash(dto.password)
@@ -60,7 +75,7 @@ export class AppService {
 
     async disableUserById(dto: MongoIdDto) {
         try {
-            return await this.prisma.user.update({
+            const user = await this.prisma.user.update({
                 where: {
                     id: dto.id
                 },
@@ -68,6 +83,10 @@ export class AppService {
                     isActive: false
                 }
             })
+
+            await this.addUserToBlacklist(dto.id)
+
+            return user
         } catch (e) {
             handlePrismaError(e)
         }
@@ -95,6 +114,7 @@ export class AppService {
                     id: dto.id
                 }
             })
+            await this.addUserToBlacklist(dto.id)
         } catch (e) {
             handlePrismaError(e)
         }
@@ -161,6 +181,9 @@ export class AppService {
                 }
             }
         })
+
+        await Promise.all(dto.ids.map((id) => this.addUserToBlacklist(id)))
+
         return data
     }
 

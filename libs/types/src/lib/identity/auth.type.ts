@@ -4,10 +4,12 @@ export type JwtPayload = {
     sub: string
     email: string
     role: Role
+    iat?: number //Issued At
+    exp?: number //Expires At
 }
 
 export type UserPayload = {
-    userId: number
+    userId: string
     email: string
     role: Role
 }

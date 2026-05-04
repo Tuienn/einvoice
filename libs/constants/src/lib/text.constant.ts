@@ -5,7 +5,8 @@ export const AUTH_TEXT = {
     USER_NOT_FOUND: 'User not found',
     ACCOUNT_DISABLED: 'Account has been disabled',
     INVALID_CREDENTIALS: 'Invalid email or password',
-    USER_ID_REQUIRED: 'User ID is required in request headers'
+    USER_ID_REQUIRED: 'User ID is required in request headers',
+    DISABLED_USER: 'User has been disabled'
 }
 
 export const missingDataField = (field: string) => `${field} is required`

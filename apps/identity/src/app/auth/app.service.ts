@@ -17,6 +17,10 @@ export class AppService {
             throw new UnauthorizedException(AUTH_TEXT.INVALID_CREDENTIALS)
         }
 
+        if (!user.isActive) {
+            throw new UnauthorizedException(AUTH_TEXT.DISABLED_USER)
+        }
+
         const isPasswordMatch = await verify(user.password, dto.password)
         if (!isPasswordMatch) {
             throw new UnauthorizedException(AUTH_TEXT.INVALID_CREDENTIALS)

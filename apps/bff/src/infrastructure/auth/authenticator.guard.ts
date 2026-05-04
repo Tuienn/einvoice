@@ -1,17 +1,17 @@
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 import { JwtPayload } from '@libs/types/identity/auth.type'
 import { AUTH_TEXT } from '@libs/constants/text.constant'
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
+import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { JwtService } from '@nestjs/jwt'
 import { CONFIGURATION } from '../../configuration'
-import { AppService as IdentityService } from '../../app/identity/app.service'
 
 @Injectable()
 export class AuthenticatorGuard implements CanActivate {
     constructor(
         private readonly jwtService: JwtService,
         private readonly reflector: Reflector, //NOTE - Sử dụng Reflector để đọc metadata từ decorator @Public() được gắn trên controller/route handler
-        private readonly identityService: IdentityService
+        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -47,11 +47,10 @@ export class AuthenticatorGuard implements CanActivate {
             throw new UnauthorizedException(AUTH_TEXT.USER_ID_REQUIRED)
         }
 
-        //SECTION - Kiểm tra user có tồn tại không
-        const userExists = await this.identityService.getUserById({ id: payload.sub })
+        const isBlacklisted = await this.cacheManager.get<boolean>(`blacklist:user:${payload.sub}`)
 
-        if (!userExists || !userExists?.id) {
-            throw new UnauthorizedException(AUTH_TEXT.USER_NOT_FOUND)
+        if (isBlacklisted) {
+            throw new UnauthorizedException(`${AUTH_TEXT.USER_NOT_FOUND} or ${AUTH_TEXT.DISABLED_USER}`)
         }
 
         //SECTION - Gắn thông tin payload đã giải mã vào request để các phần sau có thể sử dụng

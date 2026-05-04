@@ -14,7 +14,7 @@ export class AppService {
     ) {}
 
     //SECTION - Identity - User
-    async createVoter(dto: CreateUserDto) {
+    async createUser(dto: CreateUserDto) {
         return lastValueFrom(this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_USER, dto))
     }
 
@@ -46,7 +46,7 @@ export class AppService {
         return lastValueFrom(this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.DELETE_BULK_USERS, ids))
     }
 
-    async createBulkVoters(dto: CreateBulkUsersDto) {
+    async createBulkUsers(dto: CreateBulkUsersDto) {
         return lastValueFrom(this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.CREATE_BULK_USERS, dto))
     }
 
@@ -60,6 +60,6 @@ export class AppService {
     }
 
     async signOut(dto: RefreshTokenDto) {
-        return lastValueFrom(this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.SIGN_OUT, dto))
+        return this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.SIGN_OUT, dto)
     }
 }

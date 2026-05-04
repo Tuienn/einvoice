@@ -1,3 +1,4 @@
+import { CurrentUser } from '@libs/decorators/current-user.decorator'
 import { Body, Controller, Delete, Get, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common'
 import { AppService } from './app.service'
 import { CreateBulkUsersDto, CreateUserDto, FilterUsersDto, UpdateUserByIdDto } from '@libs/types/identity/user.dto'
@@ -8,6 +9,7 @@ import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { Public } from '@libs/decorators/public.decorator'
 import { Roles } from '@libs/decorators/roles.decorator'
 import { ROLE_ARRAY } from '@libs/constants/common.constant'
+import { RequestWithUser } from '@libs/types/identity/auth.type'
 
 @ApiTags('Identity')
 @Controller('identity')
@@ -15,6 +17,16 @@ export class AppController {
     constructor(private readonly appService: AppService) {}
 
     //SECTION - Identity - User
+    @Get('user/me')
+    async getMyProfile(@CurrentUser() user: RequestWithUser) {
+        const result = await this.appService.getUserById({ id: user.userId })
+
+        return new ResponseDto({
+            data: result,
+            message: 'Get profile successfully'
+        })
+    }
+
     @Roles('ADMIN')
     @Post('user/create-user')
     @ApiBody({
@@ -31,12 +43,12 @@ export class AppController {
             }
         }
     })
-    async createVoter(@Body() data: CreateUserDto) {
-        const result = await this.appService.createVoter(data)
+    async createUser(@Body() data: CreateUserDto) {
+        const result = await this.appService.createUser(data)
 
         return new ResponseDto({
             data: result,
-            message: 'Voter created successfully',
+            message: 'User created successfully',
             statusCode: HttpStatus.CREATED
         })
     }
@@ -56,8 +68,8 @@ export class AppController {
             }
         }
     })
-    async createBulkVoters(@Body() dto: CreateBulkUsersDto) {
-        const result = (await this.appService.createBulkVoters(dto)) ?? { count: 0 }
+    async createBulkUsers(@Body() dto: CreateBulkUsersDto) {
+        const result = (await this.appService.createBulkUsers(dto)) ?? { count: 0 }
 
         return new ResponseDto({
             data: result,

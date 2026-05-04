@@ -46,6 +46,18 @@ export class BffEnvConfiguration {
     @IsString()
     JWT_ACCESS_SECRET: string
 
+    @IsNumber()
+    REDIS_CACHE_TTL: number
+
+    @IsString()
+    REDIS_HOST: string
+
+    @IsNumber()
+    REDIS_PORT: number
+
+    @IsString()
+    REDIS_PASSWORD: string
+
     constructor() {
         this.HTTP_PORT = Number(process.env['HTTP_PORT']) || 3000
         this.HTTP_GLOBAL_PREFIX = process.env['HTTP_GLOBAL_PREFIX'] || 'api/v1'
@@ -64,5 +76,10 @@ export class BffEnvConfiguration {
         this.THROTTLE_TTL = Number(process.env['THROTTLE_TTL']) || 60000
         this.THROTTLE_LIMIT = Number(process.env['THROTTLE_LIMIT']) || 100
         this.JWT_ACCESS_SECRET = process.env['JWT_ACCESS_SECRET'] || 'default_access_secret'
+
+        this.REDIS_CACHE_TTL = Number(process.env['REDIS_CACHE_TTL']) || 60000
+        this.REDIS_HOST = process.env['REDIS_HOST'] || 'localhost'
+        this.REDIS_PORT = Number(process.env['REDIS_PORT']) || 6379
+        this.REDIS_PASSWORD = process.env['REDIS_PASSWORD'] || 'secret'
     }
 }
