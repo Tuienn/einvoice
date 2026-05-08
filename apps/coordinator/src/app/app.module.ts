@@ -1,3 +1,4 @@
+import { RedisCacheModule } from '@libs/modules/redis-cache.module'
 import { TcpClientModule } from '@libs/modules/tcp-client.module'
 import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { Module } from '@nestjs/common'
@@ -27,6 +28,12 @@ import { VoteModule } from './vote/app.module'
                 port: CONFIGURATION.COORDINATOR_CONFIG.SIGNING_NODES_TCP_PORT[index]
             }))
         ]),
+        RedisCacheModule.register({
+            ttl: CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL,
+            host: CONFIGURATION.COORDINATOR_CONFIG.REDIS_HOST,
+            port: CONFIGURATION.COORDINATOR_CONFIG.REDIS_PORT,
+            password: CONFIGURATION.COORDINATOR_CONFIG.REDIS_PASSWORD
+        }),
         PrismaModule,
         ElectionModule,
         VoteModule

@@ -25,6 +25,14 @@ import { lastValueFrom } from 'rxjs'
 import { IDENTITY_MESSAGE_PATTERNS, SIGNING_NODE_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { ModuleRef } from '@nestjs/core'
 import { computeCollectivePublicKey, isValidHex, BN } from '@libs/schnorr-blind'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
+
+type SigningNodesHexParam = {
+    p: string
+    q: string
+    g: string
+    collectivePublicKey: string
+}
 
 @Injectable()
 export class AppService {
@@ -34,14 +42,20 @@ export class AppService {
         private readonly moduleRef: ModuleRef,
         @Inject(`TCP_${CONFIGURATION.COORDINATOR_CONFIG.IDENTITY_TCP_NAME}`)
         private readonly identityClient: ClientProxy,
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
     ) {
         this.signingNodeClients = CONFIGURATION.COORDINATOR_CONFIG.SIGNING_NODES_TCP_NAME.map((serviceName) =>
             this.moduleRef.get<ClientProxy>(`TCP_${serviceName}`, { strict: false })
         )
     }
 
-    private async collectivePublicKey() {
+    async collectiveSigningNodesParam(): Promise<SigningNodesHexParam> {
+        const existingParams = await this.cacheManager.get<SigningNodesHexParam>('signingNodesHexParam')
+        if (existingParams) {
+            return existingParams
+        }
+
         const results = await Promise.all(
             this.signingNodeClients.map((client) =>
                 lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.GET_NODE_INFO, {}))
@@ -67,7 +81,22 @@ export class AppService {
             return new BN(result.publicKey, 16)
         })
 
-        return computeCollectivePublicKey(publicKeys, p)
+        const collectivePublicKey = computeCollectivePublicKey(publicKeys, p)
+
+        const signingNodesHexParam: SigningNodesHexParam = {
+            p: first.params.p,
+            q: first.params.q,
+            g: first.params.g,
+            collectivePublicKey: collectivePublicKey.toString(16)
+        }
+
+        await this.cacheManager.set(
+            'signingNodesHexParam',
+            signingNodesHexParam,
+            CONFIGURATION.COORDINATOR_CONFIG.REDIS_SIGNING_NODES_PARAM_CACHE_TTL
+        )
+
+        return signingNodesHexParam
     }
 
     async filterElections(dto: FilterElectionsDto): Promise<
@@ -208,7 +237,7 @@ export class AppService {
     }
 
     async startElection(dto: MongoIdDto) {
-        const collectivePublicKey = await this.collectivePublicKey()
+        const collectivePublicKey = (await this.collectiveSigningNodesParam()).collectivePublicKey
 
         try {
             return await this.prisma.$transaction(async (tx) => {
@@ -244,7 +273,7 @@ export class AppService {
                     data: {
                         status: ElectionStatus.ACTIVE,
                         startDate: new Date(),
-                        collectivePublicKey: collectivePublicKey.toString(16)
+                        collectivePublicKey: collectivePublicKey
                     },
                     omit: {
                         blockchainRef: true,

@@ -105,7 +105,7 @@ export class AppService {
                 q: first.q,
                 voted: false
             },
-            CONFIGURATION.COORDINATOR_CONFIG.REDIS_CACHE_TTL
+            CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL
         )
 
         return {
@@ -166,7 +166,7 @@ export class AppService {
                 signatureHex,
                 voted: false
             },
-            CONFIGURATION.COORDINATOR_CONFIG.REDIS_CACHE_TTL
+            CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL
         )
 
         return {
@@ -234,7 +234,7 @@ export class AppService {
                     ...existSession,
                     voted: true
                 },
-                CONFIGURATION.COORDINATOR_CONFIG.REDIS_CACHE_TTL
+                CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL
             )
 
             return vote

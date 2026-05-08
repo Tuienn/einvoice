@@ -29,7 +29,10 @@ export class CoordinatorEnvConfiguration {
     SIGNING_NODES_TCP_PORT: number[]
 
     @IsNumber()
-    REDIS_CACHE_TTL: number
+    REDIS_SESSION_CACHE_TTL: number
+
+    @IsNumber()
+    REDIS_SIGNING_NODES_PARAM_CACHE_TTL: number
 
     @IsString()
     REDIS_HOST: string
@@ -63,9 +66,10 @@ export class CoordinatorEnvConfiguration {
             3304, 3305, 3306
         ]
 
-        this.REDIS_CACHE_TTL = Number(process.env['REDIS_CACHE_TTL']) || 30000
+        this.REDIS_SIGNING_NODES_PARAM_CACHE_TTL = Number(process.env['REDIS_SIGNING_NODES_PARAM_CACHE_TTL']) || 600000
         this.REDIS_HOST = process.env['REDIS_HOST'] || 'localhost'
         this.REDIS_PORT = Number(process.env['REDIS_PORT']) || 6379
         this.REDIS_PASSWORD = process.env['REDIS_PASSWORD'] || 'secret'
+        this.REDIS_SESSION_CACHE_TTL = Number(process.env['REDIS_SESSION_CACHE_TTL']) || 120000
     }
 }

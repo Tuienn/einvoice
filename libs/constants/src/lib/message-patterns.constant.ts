@@ -26,7 +26,9 @@ export const COORDINATOR_MESSAGE_PATTERNS = {
 
     START_SESSION: 'vote.start_vote_session',
     SIGN_BLINDED_VOTE: 'vote.sign_blinded_vote',
-    SUBMIT_UNBLINDED_VOTE: 'vote.submit_unblinded_vote'
+    SUBMIT_UNBLINDED_VOTE: 'vote.submit_unblinded_vote',
+
+    REVEAL_VOTE: 'reveal.reveal_vote'
 } as const
 
 export const SIGNING_NODE_MESSAGE_PATTERNS = {
