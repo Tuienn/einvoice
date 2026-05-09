@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum ElectionStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  COMPLETED
+}
+
+model Election {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  name           String          @unique
+  status         ElectionStatus  @default(PENDING)
+  candidateIds   String[]
+  electionVoters ElectionVoter[]
+  votes          Vote[]
+  revealVotes    RevealedVote[]
+
+  merkleRoot    String?
+  blockchainRef String?
+
+  collectivePublicKey String?
+
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status, startDate, endDate]) //lấy các election theo status trong khoảng thời gian
+  @@map("elections")
+}
+
+model ElectionVoter {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  electionId String   @db.ObjectId
+  election   Election @relation(fields: [electionId], references: [id])
+
+  voterId String @db.ObjectId
+
+  votes Vote[]
+
+  @@unique([electionId, voterId]) //mỗi voter chỉ vote 1 lần cho 1 election
+  @@index([voterId, electionId]) //lấy danh sách election của một voter
+  @@map("election_voters")
+}
+
+model Vote {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  electionId String   @db.ObjectId
+  election   Election @relation(fields: [electionId], references: [id])
+
+  voterId String        @db.ObjectId
+  voter   ElectionVoter @relation(fields: [voterId], references: [id])
+
+  blindedVoteHash String
+  blockchainRef   String?
+  revealed        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([electionId, voterId])
+  @@index([voterId, revealed])
+  @@index([electionId, createdAt]) //lấy votes của election X, sort theo thời gian tạo
+  @@unique([electionId, blindedVoteHash]) //mỗi vote chỉ được submit 1 lần cho 1 election
+  @@map("votes")
+}
+
+type SignatureRevealedVote {
+  h String
+  sPrime String
+}
+
+model RevealedVote {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+
+    electionId String   @db.ObjectId 
+    election   Election @relation(fields: [electionId], references: [id])
+
+    candidateId String @db.ObjectId
+
+    blindedVoteHash String
+    blockchainRef   String?
+    signature SignatureRevealedVote
+    revealedAt DateTime @default(now())
+
+    @@index([electionId, candidateId]) //lấy revealed votes của election X, sort theo thời gian revealed
+    @@unique([electionId, blindedVoteHash]) //mỗi vote chỉ được reveal 1 lần cho 1 election
+    @@map("revealed_votes")
+}

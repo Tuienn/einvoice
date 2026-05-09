@@ -26,7 +26,7 @@ export class RedisCacheModule {
         return {
             module: RedisCacheModule,
             imports: [
-                CacheModule.register({
+                CacheModule.registerAsync({
                     isGlobal: true,
                     useFactory: () => ({
                         ttl: config.ttl,

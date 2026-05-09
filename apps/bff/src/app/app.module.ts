@@ -1,3 +1,4 @@
+import { RedisCacheModule } from '@libs/modules/redis-cache.module'
 import { CustomValidationPipe } from '@libs/pipes/custom-validation.pipe'
 import { AuthorizationGuard } from '../infrastructure/auth/authorization.guard'
 import { Module } from '@nestjs/common'
@@ -14,27 +15,40 @@ import { TcpClientModule } from '@libs/modules/tcp-client.module'
 import { AuthenticatorGuard } from '../infrastructure/auth/authenticator.guard'
 import { JwtModule } from '@nestjs/jwt'
 import { ExceptionFilterHandler } from '@libs/filters/exception.filter'
+import { CoordinatorModule } from './coordinator/app.module'
 
 @Module({
     imports: [
         ConfigModule.forRoot({ load: [() => CONFIGURATION] }),
-        //NOTE- Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
+        //NOTE - Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
         ThrottlerModule.forRoot([
             {
                 ttl: CONFIGURATION.BFF_CONFIG.THROTTLE_TTL,
                 limit: CONFIGURATION.BFF_CONFIG.THROTTLE_LIMIT
             }
         ]),
-        //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
+        RedisCacheModule.register({
+            ttl: CONFIGURATION.BFF_CONFIG.REDIS_CACHE_TTL,
+            host: CONFIGURATION.BFF_CONFIG.REDIS_HOST,
+            port: CONFIGURATION.BFF_CONFIG.REDIS_PORT,
+            password: CONFIGURATION.BFF_CONFIG.REDIS_PASSWORD
+        }),
+        //NOTE - Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
         TcpClientModule.register([
             {
-                serviceName: CONFIGURATION.SERVICE_NAME,
+                serviceName: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_NAME,
                 host: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_HOST,
                 port: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_PORT
+            },
+            {
+                serviceName: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_NAME,
+                host: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_HOST,
+                port: CONFIGURATION.BFF_CONFIG.COORDINATOR_TCP_PORT
             }
         ]),
         JwtModule.register({}),
-        IdentityModule
+        IdentityModule,
+        CoordinatorModule
     ],
     providers: [
         {

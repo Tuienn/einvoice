@@ -1,5 +1,4 @@
 import { SetMetadata } from '@nestjs/common'
-import { Role } from '@libs/types/identity/auth.type'
+import { ROLE_ARRAY, ROLES_KEY } from '@libs/constants/common.constant'
 
-const ROLES_KEY = 'roles'
-export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles)
+export const Roles = (...roles: typeof ROLE_ARRAY) => SetMetadata(ROLES_KEY, roles)

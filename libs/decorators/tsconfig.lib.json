@@ -13,5 +13,5 @@
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["src/**/*.ts"]
+    "include": ["src/**/*.ts", "../types/src/lib/share-decorator/is-mongo-id-array.decorator.ts"]
 }

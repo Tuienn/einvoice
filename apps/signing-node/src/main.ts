@@ -1,0 +1,25 @@
+import { Logger } from '@nestjs/common'
+import { NestFactory } from '@nestjs/core'
+import { AppModule } from './app/app.module'
+import { MicroserviceOptions, Transport } from '@nestjs/microservices'
+import { CONFIGURATION } from './configuration'
+
+async function bootstrap() {
+    const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+        transport: Transport.TCP,
+        options: {
+            host: CONFIGURATION.SIGNING_NODE_CONFIG.TCP_HOST,
+            port: CONFIGURATION.SIGNING_NODE_CONFIG.TCP_PORT
+        }
+    })
+
+    app.enableShutdownHooks() //NOTE - Kích hoạt lifecycle hook onModuleDestroy để có thể đóng kết nối TCP client khi ứng dụng tắt
+
+    await app.listen()
+
+    Logger.log(
+        `🚀 TCP microservice is running on: ${CONFIGURATION.SIGNING_NODE_CONFIG.TCP_HOST}:${CONFIGURATION.SIGNING_NODE_CONFIG.TCP_PORT}`,
+        'Bootstrap'
+    )
+}
+bootstrap()

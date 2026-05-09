@@ -1,10 +1,11 @@
 import { removeUndefinedObj } from '@libs/utils/object.util'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import {
     CreateBulkUsersDto,
     CreateUserDto,
     FilterUsersDto,
     GetUserByEmailDto,
+    RoleDto,
     UpdateUserByIdDto
 } from '@libs/types/identity/user.dto'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
@@ -13,10 +14,25 @@ import { hash } from 'argon2'
 import { MongoIdDto, MongoIdsDto } from '@libs/types/common.dto'
 import { PaginationMeta } from '@libs/types/common.type'
 import { Role, User } from '../../../generated/prisma/browser'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
+import { CONFIGURATION } from '../../configuration'
 
 @Injectable()
 export class AppService {
-    constructor(private prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache
+    ) {}
+
+    private async addUserToBlacklist(userId: string) {
+        //Chuẩn hơn sẽ dùng TTL của blacklist entry = thời gian còn lại của access token và luôn >0 do đã qua được wtService.verify ở authenticator.guard
+
+        await this.cacheManager.set(
+            `blacklist:user:${userId}`,
+            true,
+            CONFIGURATION.IDENTITY_CONFIG.JWT_ACCESS_EXPIRES_IN * 1000 // Convert seconds to milliseconds
+        )
+    }
 
     async createUser(dto: CreateUserDto) {
         const hashPassword = await hash(dto.password)
@@ -59,7 +75,7 @@ export class AppService {
 
     async disableUserById(dto: MongoIdDto) {
         try {
-            return await this.prisma.user.update({
+            const user = await this.prisma.user.update({
                 where: {
                     id: dto.id
                 },
@@ -67,6 +83,10 @@ export class AppService {
                     isActive: false
                 }
             })
+
+            await this.addUserToBlacklist(dto.id)
+
+            return user
         } catch (e) {
             handlePrismaError(e)
         }
@@ -74,7 +94,7 @@ export class AppService {
 
     async enableUserById(dto: MongoIdDto) {
         try {
-            return await this.prisma.user.update({
+            const user = await this.prisma.user.update({
                 where: {
                     id: dto.id
                 },
@@ -82,6 +102,10 @@ export class AppService {
                     isActive: true
                 }
             })
+
+            await this.cacheManager.del(`blacklist:user:${dto.id}`)
+
+            return user
         } catch (e) {
             handlePrismaError(e)
         }
@@ -94,6 +118,7 @@ export class AppService {
                     id: dto.id
                 }
             })
+            await this.addUserToBlacklist(dto.id)
         } catch (e) {
             handlePrismaError(e)
         }
@@ -160,6 +185,9 @@ export class AppService {
                 }
             }
         })
+
+        await Promise.all(dto.ids.map((id) => this.addUserToBlacklist(id)))
+
         return data
     }
 
@@ -178,14 +206,15 @@ export class AppService {
         const existingEmails = new Set(existingUsers.map((user) => user.email))
 
         // Duyệt qua dto.data một lần, vừa lọc vừa hash password
-        const newDtos: { email: string; name: string; password: string }[] = []
+        const newDtos: { email: string; name: string; password: string; role: Role }[] = []
         for (const item of dto.data) {
             if (!existingEmails.has(item.email)) {
                 const hashedPassword = await hash(item.password)
                 newDtos.push({
                     email: item.email,
                     name: item.name,
-                    password: hashedPassword
+                    password: hashedPassword,
+                    role: item.role as Role
                 })
             }
         }
@@ -199,5 +228,19 @@ export class AppService {
         })
 
         return data
+    }
+
+    async getUsersByMongoIds(dto: MongoIdsDto & RoleDto) {
+        return this.prisma.user.findMany({
+            where: removeUndefinedObj({
+                id: {
+                    in: dto.ids
+                },
+                role: dto.role
+            }),
+            omit: {
+                password: true
+            }
+        })
     }
 }

@@ -14,7 +14,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
 @Module({
     imports: [
         ConfigModule.forRoot({ load: [() => CONFIGURATION] }),
-        //NOTE- Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
+        //NOTE - Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
         ThrottlerModule.forRoot([
             {
                 ttl: CONFIGURATION.BFF_CONFIG.THROTTLE_TTL,

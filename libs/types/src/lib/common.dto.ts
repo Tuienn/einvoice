@@ -1,5 +1,6 @@
 import { invalidDataField, missingDataField } from '@libs/constants/text.constant'
-import { IsArray, IsDefined, IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator'
+import { IsDefined, IsInt, IsMongoId, IsOptional, Max, Min } from 'class-validator'
+import { IsMongoIdArray } from './share-decorator/is-mongo-id-array.decorator'
 import { Type } from 'class-transformer'
 
 export class MongoIdDto {
@@ -25,7 +26,6 @@ export class PaginationQueryDto {
 
 export class MongoIdsDto {
     @IsDefined({ message: missingDataField('ids') })
-    @IsArray({ message: invalidDataField('ids', 'array of string') })
-    @IsMongoId({ each: true, message: invalidDataField('ids', 'MongoId') })
+    @IsMongoIdArray('ids')
     ids: string[]
 }

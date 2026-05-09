@@ -13,7 +13,7 @@ export class RpcToHttpExceptionInterceptor implements NestInterceptor {
         return next.handle().pipe(catchError((err: unknown) => throwError(() => this.rpcErrorToHttp(err))))
     }
 
-    //NOTE- Maps TCP microservice client error payload (RpcException / HttpException JSON) to an HTTP exception.
+    //NOTE - Maps TCP microservice client error payload (RpcException / HttpException JSON) to an HTTP exception.
     private rpcErrorToHttp = (err: unknown): HttpException => {
         if (typeof err !== 'object' || err === null) {
             return new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR)

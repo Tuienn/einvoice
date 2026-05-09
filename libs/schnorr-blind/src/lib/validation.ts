@@ -1,13 +1,13 @@
-import BN from 'bn.js'
+import { BN } from './utils'
+import { validate } from 'uuid'
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const HEX_REGEX = /^[0-9a-fA-F]+$/
 
 /**
  * Validate UUID v4 format.
  */
 export function isValidUUID(str: unknown): str is string {
-    return typeof str === 'string' && UUID_REGEX.test(str)
+    return validate(str)
 }
 
 /**
