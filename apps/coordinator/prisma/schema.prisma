@@ -68,7 +68,7 @@ model Vote {
   voterId String        @db.ObjectId
   voter   ElectionVoter @relation(fields: [voterId], references: [id])
 
-  blindedVoteHash String @unique
+  blindedVoteHash String
   blockchainRef   String?
   revealed        Boolean @default(false)
 
@@ -78,6 +78,7 @@ model Vote {
   @@unique([electionId, voterId])
   @@index([voterId, revealed])
   @@index([electionId, createdAt]) //lấy votes của election X, sort theo thời gian tạo
+  @@unique([electionId, blindedVoteHash]) //mỗi vote chỉ được submit 1 lần cho 1 election
   @@map("votes")
 }
 
@@ -97,8 +98,9 @@ model RevealedVote {
     blindedVoteHash String
     blockchainRef   String?
     signature SignatureRevealedVote
-    revaledAt DateTime @default(now())
+    revealedAt DateTime @default(now())
 
     @@index([electionId, candidateId]) //lấy revealed votes của election X, sort theo thời gian revealed
+    @@unique([electionId, blindedVoteHash]) //mỗi vote chỉ được reveal 1 lần cho 1 election
     @@map("revealed_votes")
 }

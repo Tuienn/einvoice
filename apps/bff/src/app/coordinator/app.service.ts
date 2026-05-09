@@ -1,3 +1,4 @@
+import { RevealVoteDto } from '@libs/types/coordinator/reveal.dto'
 import { CreateElectionDto, FilterElectionsDto, VoterIdsDto } from '@libs/types/coordinator/election.dto'
 import { Inject, Injectable } from '@nestjs/common'
 import { CONFIGURATION } from '../../configuration'
@@ -5,7 +6,7 @@ import { ClientProxy } from '@nestjs/microservices'
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { lastValueFrom } from 'rxjs'
 import { MongoIdDto } from '@libs/types/common.dto'
-import { SignBlindedVoteDto, StartSessionDto, SubmitUnblindedVoteDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
 
 @Injectable()
 export class AppService {
@@ -30,7 +31,7 @@ export class AppService {
         return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.START_ELECTION, dto))
     }
 
-    async endElection(dto: MongoIdDto) {
+    async closeElection(dto: MongoIdDto) {
         return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.END_ELECTION, dto))
     }
 
@@ -47,7 +48,12 @@ export class AppService {
         return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.SIGN_BLINDED_VOTE, dto))
     }
 
-    async submitUnblindedVote(dto: SubmitUnblindedVoteDto) {
+    async submitBlindedVoteHash(dto: SubmitBlindedVoteHashDto) {
         return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.SUBMIT_UNBLINDED_VOTE, dto))
+    }
+
+    //SECTION - Coordinator - Reveal
+    async revealVote(dto: RevealVoteDto) {
+        return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.REVEAL_VOTE, dto))
     }
 }

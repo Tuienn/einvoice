@@ -35,8 +35,8 @@ export class AppController {
     }
 
     @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.END_ELECTION)
-    async endElection(@Payload() dto: MongoIdDto) {
-        return await this.appService.endElection(dto)
+    async closeElection(@Payload() dto: MongoIdDto) {
+        return await this.appService.closeElection(dto)
     }
 
     @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.GET_ELECTION_BY_ID)

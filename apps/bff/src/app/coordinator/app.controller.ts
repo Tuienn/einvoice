@@ -8,7 +8,8 @@ import { ResponseDto } from '@libs/types/response.dto'
 import { MongoIdDto } from '@libs/types/common.dto'
 import { CurrentUser } from '@libs/decorators/current-user.decorator'
 import { RequestWithUser } from '@libs/types/identity/auth.type'
-import { SignBlindedVoteDto, SubmitUnblindedVoteDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
+import { RevealVoteDto } from '@libs/types/coordinator/reveal.dto'
 
 @ApiTags('Coordinator')
 @Controller('coordinator')
@@ -106,19 +107,19 @@ export class AppController {
     }
 
     @Roles('ADMIN')
-    @Patch('election/:id/end')
+    @Patch('election/:id/close')
     @ApiParam({
         name: 'id',
         type: String,
         description: 'Election ID',
         examples: { example1: { value: '69f5b5475c48c621a0681cbc' } }
     })
-    async endElection(@Param() dto: MongoIdDto) {
-        const result = await this.appService.endElection(dto)
+    async closeElection(@Param() dto: MongoIdDto) {
+        const result = await this.appService.closeElection(dto)
 
         return new ResponseDto({
             data: result,
-            message: 'Election ended successfully',
+            message: 'Election closed successfully',
             statusCode: HttpStatus.OK
         })
     }
@@ -141,7 +142,7 @@ export class AppController {
         })
     }
 
-    //SESSION- Coordinator - Vote
+    //SECTION - Coordinator - Vote
     @Roles('VOTER')
     @Post('vote/:id/start-session')
     @ApiParam({
@@ -197,11 +198,11 @@ export class AppController {
         examples: { example1: { value: '69f6a3eac5bfa7c9d91adccb' } }
     })
     @ApiBody({
-        type: SubmitUnblindedVoteDto,
+        type: SubmitBlindedVoteHashDto,
         examples: {
             example1: {
                 value: {
-                    bindedVoteHash: '1234567890',
+                    blindedVoteHash: '1234567890',
                     signatureHex: '1234567890',
                     sessionId: 'aef44e20-48d8-4817-a1ae-3cfe79f9e049'
                 }
@@ -209,12 +210,12 @@ export class AppController {
         }
     })
     @HttpCode(HttpStatus.OK)
-    async submitUnblindedVote(
-        @Param() params: Pick<SubmitUnblindedVoteDto, 'electionId'>,
-        @Body() dto: Omit<SubmitUnblindedVoteDto, 'electionId' | 'voterId'>,
+    async submitBlindedVoteHash(
+        @Param() params: Pick<SubmitBlindedVoteHashDto, 'electionId'>,
+        @Body() dto: Omit<SubmitBlindedVoteHashDto, 'electionId' | 'voterId'>,
         @CurrentUser() user: RequestWithUser
     ) {
-        const result = await this.appService.submitUnblindedVote({
+        const result = await this.appService.submitBlindedVoteHash({
             ...dto,
             electionId: params.electionId,
             voterId: user.userId
@@ -222,7 +223,35 @@ export class AppController {
 
         return new ResponseDto({
             data: result,
-            message: 'Unblinded vote submitted successfully',
+            message: 'Blinded vote hash submitted successfully',
+            statusCode: HttpStatus.OK
+        })
+    }
+
+    //SECTION - Coordinator - Reveal
+    @Public()
+    @Post('reveal')
+    @HttpCode(HttpStatus.OK)
+    @ApiBody({
+        type: RevealVoteDto,
+        examples: {
+            example1: {
+                value: {
+                    electionId: '69f6a3eac5bfa7c9d91adccb',
+                    candidateId: '69f5b5475c48c621a0681cbc',
+                    h: '1234567890',
+                    sPrime: '1234567890'
+                }
+            }
+        }
+    })
+    @HttpCode(HttpStatus.OK)
+    async revealVote(@Body() dto: RevealVoteDto) {
+        const result = await this.appService.revealVote(dto)
+
+        return new ResponseDto({
+            data: result,
+            message: 'Vote revealed successfully',
             statusCode: HttpStatus.OK
         })
     }

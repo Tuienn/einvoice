@@ -1,4 +1,4 @@
-import { SignBlindedVoteDto, StartSessionDto, SubmitUnblindedVoteDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { CONFIGURATION } from '../../configuration'
 import { ClientProxy } from '@nestjs/microservices'
@@ -16,7 +16,6 @@ import {
 } from '@libs/schnorr-blind'
 import { BN } from '@libs/schnorr-blind'
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
-import { ElectionStatus } from '../../../generated/prisma/client'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
 
 type SessionSignedCache = {
@@ -44,14 +43,16 @@ export class AppService {
     }
 
     async startSession(dto: StartSessionDto) {
-        //SECTION- Kiểm tra election và voter có tồn tại không
+        await this.electionService.checkActiveElectionById({ id: dto.electionId })
+
+        //SECTION - Kiểm tra election và voter có tồn tại không
         const { electionVoter, voter } = await this.electionService.getVoterInElection(dto)
 
         if (!voter.isActive) {
             throw new ConflictException('Voter is not active')
         }
 
-        //SECTION- Kiểm tra voter đã vote chưa
+        //SECTION - Kiểm tra voter đã vote chưa
         const existVote = await this.prisma.vote.findUnique({
             where: {
                 electionId_voterId: {
@@ -65,7 +66,7 @@ export class AppService {
             throw new ConflictException('Voter already voted in this election')
         }
 
-        //SECTION- Tạo session ID và gửi commitment đến các signing node
+        //SECTION - Tạo session ID và gửi commitment đến các signing node
         const sessionId = uuidv4()
         const commitmentResults = await Promise.all(
             this.signingNodeClients.map((client) =>
@@ -79,7 +80,7 @@ export class AppService {
             }
         })
 
-        //SECTION- Kiểm tra các tham số từ các signing node có khớp nhau không
+        //SECTION - Kiểm tra các tham số từ các signing node có khớp nhau không
         const [first, ...rest] = commitmentResults
 
         const isMismatch = rest.some((item) => item.p !== first.p || item.q !== first.q || item.g !== first.g)
@@ -88,14 +89,14 @@ export class AppService {
             throw new BadRequestException('Inconsistent cryptographic parameters (p, q, g) across signing nodes')
         }
 
-        //SECTION- Tính commitment và public key tập thể
+        //SECTION - Tính commitment và public key tập thể
         const p = new BN(first.p, 16)
         const commitments = commitmentResults.map((r) => new BN(r.cI, 16))
         const publicKeys = commitmentResults.map((r) => new BN(r.rhoI, 16))
         const collectiveCommitment = computeCollectiveCommitment(commitments, p)
         const collectivePublicKey = computeCollectivePublicKey(publicKeys, p)
 
-        //NOTE- Lưu sessionId chống Double-signing (1 voter 1 vote)
+        //NOTE - Lưu sessionId chống Double-signing (1 voter 1 vote)
         await this.cacheManager.set(
             `session:signed:${sessionId}`,
             {
@@ -122,7 +123,7 @@ export class AppService {
     }
 
     async signBlindedVote(dto: SignBlindedVoteDto) {
-        //SECTION- Kiểm tra session đã signed chưa
+        //SECTION - Kiểm tra session đã signed chưa
         const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
 
         if (!existSession) {
@@ -133,7 +134,7 @@ export class AppService {
             throw new ConflictException('Session:sign signed already')
         }
 
-        //SECTION- Gửi rHex đến các signing node và nhận signature results
+        //SECTION - Gửi rHex đến các signing node và nhận signature results
         const signatureResults = await Promise.all(
             this.signingNodeClients.map((client) =>
                 lastValueFrom(
@@ -151,7 +152,7 @@ export class AppService {
             }
         })
 
-        //SECTION- Tính signature tập thể
+        //SECTION - Tính signature tập thể
         const partialSignatures = signatureResults.map((r) => new BN(r.sI, 16))
         const signature = aggregateSignatures(partialSignatures, new BN(existSession.q, 16))
         const signatureHex = signature.toString(16)
@@ -174,8 +175,8 @@ export class AppService {
         }
     }
 
-    async submitUnblindedVote(dto: SubmitUnblindedVoteDto) {
-        //SECTION- Kiểm tra session đã signature có hợp lệ không
+    async submitBlindedVoteHash(dto: SubmitBlindedVoteHashDto) {
+        //SECTION - Kiểm tra session đã signature có hợp lệ không
         const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
 
         if (!existSession) {
@@ -198,12 +199,7 @@ export class AppService {
             throw new ConflictException('Session:sign already voted')
         }
 
-        const existElection = await this.electionService.getElectionById({ id: dto.electionId })
-
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        if (existElection!.status !== ElectionStatus.ACTIVE) {
-            throw new ConflictException('Election is not active')
-        }
+        await this.electionService.checkActiveElectionById({ id: dto.electionId })
 
         const existVote = await this.prisma.vote.findUnique({
             where: {
@@ -223,7 +219,7 @@ export class AppService {
                 data: {
                     electionId: dto.electionId,
                     voterId: dto.voterId,
-                    blindedVoteHash: dto.bindedVoteHash,
+                    blindedVoteHash: dto.blindedVoteHash,
                     revealed: false
                 }
             })

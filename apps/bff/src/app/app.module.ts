@@ -20,7 +20,7 @@ import { CoordinatorModule } from './coordinator/app.module'
 @Module({
     imports: [
         ConfigModule.forRoot({ load: [() => CONFIGURATION] }),
-        //NOTE- Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
+        //NOTE - Giới hạn số request HTTP trong khoảng thời gian THROTTLE_TTL (ms), bỏ qua TCP
         ThrottlerModule.forRoot([
             {
                 ttl: CONFIGURATION.BFF_CONFIG.THROTTLE_TTL,
@@ -33,7 +33,7 @@ import { CoordinatorModule } from './coordinator/app.module'
             port: CONFIGURATION.BFF_CONFIG.REDIS_PORT,
             password: CONFIGURATION.BFF_CONFIG.REDIS_PASSWORD
         }),
-        //NOTE- Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
+        //NOTE - Tên định danh client TCP gọi và cấu hình options cho TCP service đích gọi đến
         TcpClientModule.register([
             {
                 serviceName: CONFIGURATION.BFF_CONFIG.IDENTITY_TCP_NAME,

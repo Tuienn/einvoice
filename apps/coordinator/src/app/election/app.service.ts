@@ -131,7 +131,7 @@ export class AppService {
     }
 
     async createElection(dto: CreateElectionDto) {
-        //SECTION- Kiểm tra candidateIds có tồn tại và active không
+        //SECTION - Kiểm tra candidateIds có tồn tại và active không
         const candidates = await lastValueFrom(
             this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
                 ids: dto.candidateIds,
@@ -184,7 +184,7 @@ export class AppService {
                     throw new ConflictException('Only PENDING election can be added voters')
                 }
 
-                //SECTION- Kiểm tra voterIds có tồn tại và active không
+                //SECTION - Kiểm tra voterIds có tồn tại và active không
                 const voters = await lastValueFrom(
                     this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
                         ids: dto.voterIds,
@@ -207,7 +207,7 @@ export class AppService {
                     throw new BadRequestException(`Some voters are inactive: ${inactiveIds.join(', ')}`)
                 }
 
-                //SECTION- Thêm voters vào election
+                //SECTION - Thêm voters vào election
                 return await tx.election.update({
                     where: {
                         id: dto.id
@@ -286,7 +286,7 @@ export class AppService {
         }
     }
 
-    async endElection(dto: MongoIdDto) {
+    async closeElection(dto: MongoIdDto) {
         try {
             return await this.prisma.$transaction(async (tx) => {
                 const election = await tx.election.findUniqueOrThrow({
@@ -300,17 +300,17 @@ export class AppService {
                 }
 
                 if (election.endDate) {
-                    throw new ConflictException('Election already ended')
+                    throw new ConflictException('Election already closed')
                 }
                 if (election.status !== ElectionStatus.ACTIVE) {
-                    throw new ConflictException('Only ACTIVE election can be ended')
+                    throw new ConflictException('Only ACTIVE election can be closed')
                 }
                 return await tx.election.update({
                     where: {
                         id: dto.id
                     },
                     data: {
-                        status: ElectionStatus.COMPLETED,
+                        status: ElectionStatus.CLOSED,
                         endDate: new Date()
                     }
                 })
@@ -333,10 +333,10 @@ export class AppService {
     }
 
     async getVoterInElection(dto: GetVoterInElectionDto) {
-        //SECTION- Kiểm tra election có tồn tại không
+        //SECTION - Kiểm tra election có tồn tại không
         await this.getElectionById({ id: dto.electionId })
 
-        //SECTION- Kiểm tra election voter có tồn tại không
+        //SECTION - Kiểm tra election voter có tồn tại không
         const electionVoter = await this.prisma.electionVoter.findUnique({
             where: {
                 electionId_voterId: {
@@ -352,7 +352,7 @@ export class AppService {
             )
         }
 
-        //SECTION- Kiểm tra voter có tồn tại không
+        //SECTION - Kiểm tra voter có tồn tại không
         const voter = await lastValueFrom(
             this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USER_BY_ID, {
                 id: electionVoter.voterId
@@ -366,6 +366,15 @@ export class AppService {
         return {
             electionVoter,
             voter
+        }
+    }
+
+    async checkActiveElectionById(dto: MongoIdDto) {
+        const election = await this.getElectionById(dto)
+
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (election!.status !== ElectionStatus.ACTIVE) {
+            throw new ConflictException('Election is not active')
         }
     }
 }

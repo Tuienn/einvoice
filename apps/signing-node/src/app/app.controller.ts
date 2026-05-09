@@ -21,12 +21,12 @@ export class AppController {
     @MessagePattern(SIGNING_NODE_MESSAGE_PATTERNS.SIGN_PARTIAL)
     async signPartial(@Payload() dto: SignPartialDto) {
         const { qByteLen, q } = this.cryptoService.getParams()
-        //NOTE- kiểm tra độ dài của rHex không vượt quá qByteLen
+        //NOTE - kiểm tra độ dài của rHex không vượt quá qByteLen
         if (!isReasonableHexLength(dto.rHex, qByteLen + 8)) {
             throw new BadRequestException('Invalid rHex length')
         }
 
-        //NOTE- kiểm tra rHex có nằm trong range [1, q-1] không
+        //NOTE - kiểm tra rHex có nằm trong range [1, q-1] không
         if (!isValidBNHex(dto.rHex, q)) {
             throw new BadRequestException('rHex must be in range [1, q-1]')
         }

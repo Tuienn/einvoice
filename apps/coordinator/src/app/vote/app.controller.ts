@@ -1,10 +1,8 @@
-import { BadRequestException, Controller } from '@nestjs/common'
+import { Controller } from '@nestjs/common'
 import { AppService } from './app.service'
-import { SignBlindedVoteDto, StartSessionDto, SubmitUnblindedVoteDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
 import { MessagePattern, Payload } from '@nestjs/microservices'
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import { isValidHex } from '@libs/schnorr-blind'
-import { invalidDataField } from '@libs/constants/text.constant'
 
 @Controller()
 export class AppController {
@@ -21,11 +19,7 @@ export class AppController {
     }
 
     @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.SUBMIT_UNBLINDED_VOTE)
-    async submitUnblindedVote(@Payload() dto: SubmitUnblindedVoteDto) {
-        if (!isValidHex(dto.signatureHex) || !isValidHex(dto.bindedVoteHash)) {
-            throw new BadRequestException(invalidDataField('signatureHex or bindedVoteHash', 'hexadecimal'))
-        }
-
-        return await this.appService.submitUnblindedVote(dto)
+    async submitBlindedVoteHash(@Payload() dto: SubmitBlindedVoteHashDto) {
+        return await this.appService.submitBlindedVoteHash(dto)
     }
 }

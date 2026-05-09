@@ -67,9 +67,9 @@ export function randomInZqStar(q: BN): BN {
     const byteLen = Math.ceil(q.bitLength() / 8) + 8
     while (true) {
         const buf = randomBytes(byteLen)
-        const candidate = new BN(buf).umod(q)
-        if (!candidate.isZero()) {
-            return candidate
+        const k = new BN(buf).umod(q)
+        if (!k.isZero()) {
+            return k
         }
     }
 }

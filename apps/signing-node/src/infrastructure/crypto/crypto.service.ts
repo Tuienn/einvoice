@@ -2,6 +2,7 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { BN, generateCommitment, generateKeyPair, generateTestParams, signPartial } from '@libs/schnorr-blind'
 import { CONFIGURATION } from '../../configuration'
+import { loadKeysFromJsonFile, saveKeysToJsonFile } from '../utils/handle-bn-keys-file.util'
 
 @Injectable()
 export class CryptoService {
@@ -14,17 +15,41 @@ export class CryptoService {
     private readonly logger = new Logger(CONFIGURATION.SERVICE_NAME)
 
     constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
-        const params = generateTestParams()
+        const existingKeys = loadKeysFromJsonFile(`keys/${CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID}.json`)
 
-        this.p = params.p
-        this.q = params.q
-        this.g = params.g
-        this.qByteLen = Math.ceil(params.q.bitLength() / 8)
+        if (!existingKeys) {
+            this.logger.warn('No existing keys found, generating new keys...')
+            const params = generateTestParams() //NOTE - dùng params cố định để dễ test, deploy thực tế nên dùng params lớn hơn và generate ngẫu nhiên
 
-        const keyPair = generateKeyPair(params.p, params.q, params.g)
+            this.p = params.p
+            this.q = params.q
+            this.g = params.g
+            this.qByteLen = Math.ceil(params.q.bitLength() / 8)
 
-        this.publicKey = keyPair.publicKey
-        this.privateKey = keyPair.privateKey
+            const keyPair = generateKeyPair(params.p, params.q, params.g)
+
+            this.publicKey = keyPair.publicKey
+            this.privateKey = keyPair.privateKey
+
+            saveKeysToJsonFile({
+                fileName: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
+                data: {
+                    publicKey: this.publicKey,
+                    privateKey: this.privateKey,
+                    p: this.p,
+                    q: this.q,
+                    g: this.g
+                }
+            })
+        } else {
+            this.logger.debug('Existing keys found, loading from file...')
+            this.p = existingKeys['p']
+            this.q = existingKeys['q']
+            this.g = existingKeys['g']
+            this.publicKey = existingKeys['publicKey']
+            this.privateKey = existingKeys['privateKey']
+            this.qByteLen = Math.ceil(this.q.bitLength() / 8)
+        }
 
         this.logger.debug('Crypto service initialized')
         this.logger.debug('p: ' + this.p.toString(16).substring(0, 20) + '...')
@@ -57,7 +82,7 @@ export class CryptoService {
     }
 
     private async setSessionNonce(sessionId: string, nonce: BN) {
-        //NOTE- 1 thời điểm chỉ có 1 commitment với 1 session nonce chống Nonce reuse (tấn công phục hồi private key)
+        //NOTE - 1 thời điểm chỉ có 1 commitment với 1 session nonce chống Nonce reuse (tấn công phục hồi private key)
         const existNonce = await this.cacheManager.get<string>(
             `session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`
         )
@@ -80,7 +105,7 @@ export class CryptoService {
             throw new NotFoundException('Session:nonce not found or expired')
         }
 
-        //NOTE- xóa nonce sau khi lấy để chống Nonce reuse (tấn công phục hồi private key)
+        //NOTE - xóa nonce sau khi lấy để chống Nonce reuse (tấn công phục hồi private key)
         await this.deleteSessionNonce(sessionId)
         return new BN(nonceHex, 16)
     }
