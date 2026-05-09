@@ -25,6 +25,8 @@
         "@nestjs/microservices": "^11.1.18",
         "@nestjs/platform-express": "^11.0.0",
         "@nestjs/throttler": "^6.5.0",
+        "@noble/curves": "^2.2.0",
+        "@noble/hashes": "^2.2.0",
         "@prisma/client": "^6.19.3",
         "@types/bn.js": "^5.2.0",
         "argon2": "^0.44.0",
