@@ -8,21 +8,24 @@ import { AppService as ElectionService } from '../election/app.service'
 import { v4 as uuidv4 } from 'uuid'
 import { SIGNING_NODE_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { lastValueFrom } from 'rxjs'
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
+import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
 import {
     aggregateSignatures,
     computeCollectiveCommitment,
     computeCollectivePublicKey,
-    isValidHex
-} from '@libs/schnorr-blind'
-import { BN } from '@libs/schnorr-blind'
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
-import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
+    getParams,
+    hexToPoint,
+    hexToScalar,
+    isValidPointHex,
+    isValidScalarHex,
+    pointToHex
+} from '@libs/ec-schnorr'
 
 type SessionSignedCache = {
     signed: boolean
     electionId: string
     voterId: string
-    q: string
     signatureHex?: string
     voted: boolean
 }
@@ -68,6 +71,8 @@ export class AppService {
 
         //SECTION - Tạo session ID và gửi commitment đến các signing node
         const sessionId = uuidv4()
+        const ecParams = getParams()
+
         const commitmentResults = await Promise.all(
             this.signingNodeClients.map((client) =>
                 lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.CREATE_COMMITMENT, { sessionId }))
@@ -75,26 +80,19 @@ export class AppService {
         )
 
         commitmentResults.forEach((result) => {
-            if (!isValidHex(result.cI || '') || !isValidHex(result.rhoI || '')) {
+            if (
+                !isValidPointHex(result.cI || '', ecParams.Point) ||
+                !isValidPointHex(result.rhoI || '', ecParams.Point)
+            ) {
                 throw new BadRequestException('Invalid commitment result')
             }
         })
 
-        //SECTION - Kiểm tra các tham số từ các signing node có khớp nhau không
-        const [first, ...rest] = commitmentResults
-
-        const isMismatch = rest.some((item) => item.p !== first.p || item.q !== first.q || item.g !== first.g)
-
-        if (isMismatch) {
-            throw new BadRequestException('Inconsistent cryptographic parameters (p, q, g) across signing nodes')
-        }
-
         //SECTION - Tính commitment và public key tập thể
-        const p = new BN(first.p, 16)
-        const commitments = commitmentResults.map((r) => new BN(r.cI, 16))
-        const publicKeys = commitmentResults.map((r) => new BN(r.rhoI, 16))
-        const collectiveCommitment = computeCollectiveCommitment(commitments, p)
-        const collectivePublicKey = computeCollectivePublicKey(publicKeys, p)
+        const commitments = commitmentResults.map((r) => hexToPoint(r.cI, ecParams))
+        const publicKeys = commitmentResults.map((r) => hexToPoint(r.rhoI, ecParams))
+        const collectiveCommitment = computeCollectiveCommitment(commitments, ecParams)
+        const collectivePublicKey = computeCollectivePublicKey(publicKeys, ecParams)
 
         //NOTE - Lưu sessionId chống Double-signing (1 voter 1 vote)
         await this.cacheManager.set(
@@ -103,7 +101,6 @@ export class AppService {
                 signed: false,
                 electionId: electionVoter.electionId,
                 voterId: electionVoter.voterId,
-                q: first.q,
                 voted: false
             },
             CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL
@@ -111,13 +108,8 @@ export class AppService {
 
         return {
             sessionId,
-            collectiveCommitment: collectiveCommitment.toString(16),
-            collectivePublicKey: collectivePublicKey.toString(16),
-            params: {
-                p: first.p,
-                q: first.q,
-                g: first.g
-            },
+            collectiveCommitment: pointToHex(collectiveCommitment),
+            collectivePublicKey: pointToHex(collectivePublicKey),
             numNodes: commitmentResults.length
         }
     }
@@ -134,6 +126,8 @@ export class AppService {
             throw new ConflictException('Session:sign signed already')
         }
 
+        const ecParams = getParams()
+
         //SECTION - Gửi rHex đến các signing node và nhận signature results
         const signatureResults = await Promise.all(
             this.signingNodeClients.map((client) =>
@@ -147,14 +141,14 @@ export class AppService {
         )
 
         signatureResults.forEach((result) => {
-            if (!isValidHex(result.sI || '')) {
+            if (!isValidScalarHex(result.sI || '', ecParams.n)) {
                 throw new BadRequestException('Invalid signature result')
             }
         })
 
         //SECTION - Tính signature tập thể
-        const partialSignatures = signatureResults.map((r) => new BN(r.sI, 16))
-        const signature = aggregateSignatures(partialSignatures, new BN(existSession.q, 16))
+        const partialSignatures = signatureResults.map((r) => hexToScalar(r.sI))
+        const signature = aggregateSignatures(partialSignatures, ecParams)
         const signatureHex = signature.toString(16)
 
         this.cacheManager.set(
@@ -163,7 +157,6 @@ export class AppService {
                 signed: true,
                 electionId: existSession.electionId,
                 voterId: existSession.voterId,
-                q: existSession.q,
                 signatureHex,
                 voted: false
             },

@@ -9,8 +9,8 @@ import {
 import { PrismaService } from '../../infrastructure/prisma/prisma.service'
 import { RevealVoteDto } from '@libs/types/coordinator/reveal.dto'
 import { AppService as ElectionService } from '../election/app.service'
-import { BN, bnToBuffer, getByteLength, hashToBN, verify } from '@libs/schnorr-blind'
 import { ElectionStatus } from '../../../generated/prisma/enums'
+import { EcParams, hashToScalar, hexToPoint, hexToScalar, scalarToBuffer, scalarToHex, verify } from '@libs/ec-schnorr'
 
 @Injectable()
 export class AppService {
@@ -19,24 +19,23 @@ export class AppService {
         private readonly electionService: ElectionService
     ) {}
 
-    private async computeBlindedVoteHash(candidateId: string, hBN: BN, sPrimeBN: BN, pBN: BN, qBN: BN) {
-        const byteLen = getByteLength(pBN)
+    private async computeBlindedVoteHash(candidateId: string, h: bigint, sPrime: bigint, params: EcParams) {
         const messageBuf = Buffer.from(candidateId, 'utf8')
-        const hBuf = bnToBuffer(hBN, byteLen)
-        const sPrimeBuf = bnToBuffer(sPrimeBN, byteLen)
-        return hashToBN([messageBuf, hBuf, sPrimeBuf], qBN).toString(16)
+        const hBuf = scalarToBuffer(h)
+        const sPrimeBuf = scalarToBuffer(sPrime)
+        return scalarToHex(hashToScalar([messageBuf, hBuf, sPrimeBuf], params.n))
     }
 
-    async revealVote(dto: RevealVoteDto) {
+    async revealVote(dto: RevealVoteDto, ecParams: EcParams) {
         //SECTION - Kiểm tra election
         const existElection = await this.electionService.getElectionById({ id: dto.electionId })
-        const signingNodesParam = await this.electionService.collectiveSigningNodesParam()
+        const collectivePublicKey = await this.electionService.collectivePublicKey()
 
         if (existElection!.status !== 'CLOSED') {
             throw new ForbiddenException('Election is not closed')
         }
 
-        if (signingNodesParam.collectivePublicKey !== existElection!.collectivePublicKey) {
+        if (collectivePublicKey !== existElection!.collectivePublicKey) {
             throw new ConflictException('Collective public key of election does not match with signing nodes param')
         }
 
@@ -48,23 +47,20 @@ export class AppService {
             throw new ForbiddenException('Candidate is not in the election')
         }
 
-        const hBN = new BN(dto.h, 16)
-        const sPrimeBN = new BN(dto.sPrime, 16)
-        const rho = new BN(existElection!.collectivePublicKey, 16)
-        const pBN = new BN(signingNodesParam.p, 16)
-        const qBN = new BN(signingNodesParam.q, 16)
-        const gBN = new BN(signingNodesParam.g, 16)
+        const h = hexToScalar(dto.h)
+        const sPrime = hexToScalar(dto.sPrime)
+        const rho = hexToPoint(existElection!.collectivePublicKey, ecParams)
 
         //SECTION - Kiểm tra signature
         const messageBuf = Buffer.from(dto.candidateId, 'utf-8')
-        const isValidSignature = verify(messageBuf, hBN, sPrimeBN, pBN, qBN, gBN, rho)
+        const isValidSignature = verify(messageBuf, h, sPrime, ecParams, rho)
 
         if (!isValidSignature) {
             throw new BadRequestException('Invalid signature')
         }
 
         //SECTION - Tính blindedVoteHash
-        const computedBlindedVoteHash = await this.computeBlindedVoteHash(dto.candidateId, hBN, sPrimeBN, pBN, qBN)
+        const computedBlindedVoteHash = await this.computeBlindedVoteHash(dto.candidateId, h, sPrime, ecParams)
 
         //SECTION - Kiểm tra blindedVoteHash có tồn tại trong database kchống anti-replay attack
         const existVote = await this.prisma.revealedVote.findUnique({

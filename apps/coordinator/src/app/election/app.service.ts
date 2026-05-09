@@ -1,3 +1,4 @@
+import { computeCollectivePublicKey, getParams, hexToPoint, isValidPointHex, pointToHex } from '@libs/ec-schnorr'
 import { removeUndefinedObj } from '@libs/utils/object.util'
 import { PaginationMeta } from '@libs/types/common.type'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
@@ -24,15 +25,7 @@ import { ClientProxy } from '@nestjs/microservices'
 import { lastValueFrom } from 'rxjs'
 import { IDENTITY_MESSAGE_PATTERNS, SIGNING_NODE_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { ModuleRef } from '@nestjs/core'
-import { computeCollectivePublicKey, isValidHex, BN } from '@libs/schnorr-blind'
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager'
-
-type SigningNodesHexParam = {
-    p: string
-    q: string
-    g: string
-    collectivePublicKey: string
-}
 
 @Injectable()
 export class AppService {
@@ -50,53 +43,43 @@ export class AppService {
         )
     }
 
-    async collectiveSigningNodesParam(): Promise<SigningNodesHexParam> {
-        const existingParams = await this.cacheManager.get<SigningNodesHexParam>('signingNodesHexParam')
-        if (existingParams) {
-            return existingParams
+    async collectivePublicKey(): Promise<string> {
+        const existPublicKeyHex = await this.cacheManager.get<string>('collectivePublicKey')
+        const ecParams = getParams()
+
+        //SECTION - Nếu đã có collective public key trong cache thì dùng luôn
+        if (existPublicKeyHex) {
+            if (!isValidPointHex(existPublicKeyHex, ecParams.Point)) {
+                throw new BadRequestException('Invalid collective public key in cache')
+            }
+            return existPublicKeyHex
         }
 
+        //SECTION - Nếu chưa có thì gọi các signing node để lấy public key và tính toán collective public key
         const results = await Promise.all(
             this.signingNodeClients.map((client) =>
                 lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.GET_NODE_INFO, {}))
             )
         )
 
-        const [first, ...rest] = results
-        const p = new BN(first.params.p, 16)
-
-        const isMismatch = rest.some(
-            (item) =>
-                item.params.p !== first.params.p || item.params.q !== first.params.q || item.params.g !== first.params.g
-        )
-
-        if (isMismatch) {
-            throw new BadRequestException('Inconsistent cryptographic parameters (p, q, g) across signing nodes')
-        }
-
         const publicKeys = results.map((result) => {
-            if (!isValidHex(result.publicKey)) {
+            if (!isValidPointHex(result.publicKey, ecParams.Point)) {
                 throw new BadRequestException('Invalid public key from signing node')
             }
-            return new BN(result.publicKey, 16)
+            return hexToPoint(result.publicKey, ecParams)
         })
 
-        const collectivePublicKey = computeCollectivePublicKey(publicKeys, p)
+        const collectivePublicKey = computeCollectivePublicKey(publicKeys, ecParams)
+        const collectivePublicKeyHex = pointToHex(collectivePublicKey)
 
-        const signingNodesHexParam: SigningNodesHexParam = {
-            p: first.params.p,
-            q: first.params.q,
-            g: first.params.g,
-            collectivePublicKey: collectivePublicKey.toString(16)
-        }
-
+        //SECTION - Cache collective public key với TTL
         await this.cacheManager.set(
-            'signingNodesHexParam',
-            signingNodesHexParam,
-            CONFIGURATION.COORDINATOR_CONFIG.REDIS_SIGNING_NODES_PARAM_CACHE_TTL
+            'collectivePublicKey',
+            collectivePublicKeyHex,
+            CONFIGURATION.COORDINATOR_CONFIG.REDIS_PK_SIGNING_NODE_CACHE_TTL
         )
 
-        return signingNodesHexParam
+        return collectivePublicKeyHex
     }
 
     async filterElections(dto: FilterElectionsDto): Promise<
@@ -237,7 +220,7 @@ export class AppService {
     }
 
     async startElection(dto: MongoIdDto) {
-        const collectivePublicKey = (await this.collectiveSigningNodesParam()).collectivePublicKey
+        const collectivePublicKeyHex = await this.collectivePublicKey()
 
         try {
             return await this.prisma.$transaction(async (tx) => {
@@ -273,7 +256,7 @@ export class AppService {
                     data: {
                         status: ElectionStatus.ACTIVE,
                         startDate: new Date(),
-                        collectivePublicKey: collectivePublicKey
+                        collectivePublicKey: collectivePublicKeyHex
                     },
                     omit: {
                         blockchainRef: true,

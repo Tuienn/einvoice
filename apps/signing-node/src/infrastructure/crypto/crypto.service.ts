@@ -1,87 +1,70 @@
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { BN, generateCommitment, generateKeyPair, generateTestParams, signPartial } from '@libs/schnorr-blind'
 import { CONFIGURATION } from '../../configuration'
-import { loadKeysFromJsonFile, saveKeysToJsonFile } from '../utils/handle-bn-keys-file.util'
+import {
+    getParams,
+    generateKeyPair,
+    type EcPoint,
+    pointToHex,
+    generateCommitment,
+    EcParams,
+    signPartial,
+    hexToScalar,
+    scalarToHex,
+    hexToPoint
+} from '@libs/ec-schnorr'
+import { loadKeysFromJsonFile, saveKeysToJsonFile } from '../utils/key-file-handler.util'
 
 @Injectable()
 export class CryptoService {
-    private readonly p: BN
-    private readonly q: BN
-    private readonly g: BN
-    private readonly publicKey: BN
-    private readonly privateKey: BN
-    private readonly qByteLen: number
+    private readonly params: EcParams
+    private readonly publicKey: EcPoint
+    private readonly privateKey: bigint
     private readonly logger = new Logger(CONFIGURATION.SERVICE_NAME)
 
     constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
+        const ecParams = getParams()
+
+        this.params = ecParams
+
         const existingKeys = loadKeysFromJsonFile(`keys/${CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID}.json`)
+        if (existingKeys && existingKeys.privateKey && existingKeys.publicKey) {
+            this.privateKey = hexToScalar(existingKeys.privateKey)
+            this.publicKey = hexToPoint(existingKeys.publicKey, ecParams)
+        } else {
+            const { privateKey, publicKey } = generateKeyPair(ecParams)
+            this.privateKey = privateKey
+            this.publicKey = publicKey
 
-        if (!existingKeys) {
-            this.logger.warn('No existing keys found, generating new keys...')
-            const params = generateTestParams() //NOTE - dùng params cố định để dễ test, deploy thực tế nên dùng params lớn hơn và generate ngẫu nhiên
-
-            this.p = params.p
-            this.q = params.q
-            this.g = params.g
-            this.qByteLen = Math.ceil(params.q.bitLength() / 8)
-
-            const keyPair = generateKeyPair(params.p, params.q, params.g)
-
-            this.publicKey = keyPair.publicKey
-            this.privateKey = keyPair.privateKey
+            this.logger.warn('No existing keys found, generated new key pair')
 
             saveKeysToJsonFile({
                 fileName: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
                 data: {
-                    publicKey: this.publicKey,
-                    privateKey: this.privateKey,
-                    p: this.p,
-                    q: this.q,
-                    g: this.g
+                    privateKey: scalarToHex(this.privateKey),
+                    publicKey: pointToHex(this.publicKey)
                 }
             })
-        } else {
-            this.logger.debug('Existing keys found, loading from file...')
-            this.p = existingKeys['p']
-            this.q = existingKeys['q']
-            this.g = existingKeys['g']
-            this.publicKey = existingKeys['publicKey']
-            this.privateKey = existingKeys['privateKey']
-            this.qByteLen = Math.ceil(this.q.bitLength() / 8)
         }
 
-        this.logger.debug('Crypto service initialized')
-        this.logger.debug('p: ' + this.p.toString(16).substring(0, 20) + '...')
-        this.logger.debug('q: ' + this.q.toString(16).substring(0, 20) + '...')
-        this.logger.debug('g: ' + this.g.toString(16).substring(0, 20) + '...')
-        this.logger.debug('qByteLen: ' + this.qByteLen)
-        this.logger.debug('Public key ' + this.publicKey.toString(16).substring(0, 20) + '...')
-        this.logger.debug('Private key ' + this.privateKey.toString(16).substring(0, 20) + '...')
+        this.logger.debug('CryptoService initialized')
+        this.logger.debug(`Public Key: ${pointToHex(this.publicKey).substring(0, 20)}...`)
+        this.logger.debug(`Private Key: ${scalarToHex(this.privateKey).substring(0, 20)}...`)
     }
 
-    getPublicKey(): BN {
-        return this.publicKey
-    }
-
-    getPrivateKey(): BN {
-        return this.privateKey
+    getPublicKey(): string {
+        return pointToHex(this.publicKey)
     }
 
     getParams() {
-        return {
-            p: this.p,
-            q: this.q,
-            g: this.g,
-            qByteLen: this.qByteLen
-        }
+        return this.params
     }
 
     private async deleteSessionNonce(sessionId: string) {
         await this.cacheManager.del(`session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`)
     }
 
-    private async setSessionNonce(sessionId: string, nonce: BN) {
+    private async setSessionNonce(sessionId: string, nonce: bigint) {
         //NOTE - 1 thời điểm chỉ có 1 commitment với 1 session nonce chống Nonce reuse (tấn công phục hồi private key)
         const existNonce = await this.cacheManager.get<string>(
             `session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`
@@ -93,44 +76,40 @@ export class CryptoService {
 
         await this.cacheManager.set(
             `session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`,
-            nonce.toString(16),
+            scalarToHex(nonce),
             CONFIGURATION.SIGNING_NODE_CONFIG.REDIS_CACHE_TTL
         )
     }
 
-    private async getSessionNonce(sessionId: string) {
-        const nonceHex = await this.cacheManager.get<string>(`session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`)
+    private async getSessionNonce(sessionId: string): Promise<bigint> {
+        const nonce = await this.cacheManager.get<string>(`session:nonce:${CONFIGURATION.SERVICE_NAME}:${sessionId}`)
 
-        if (!nonceHex) {
+        if (!nonce) {
             throw new NotFoundException('Session:nonce not found or expired')
         }
 
         //NOTE - xóa nonce sau khi lấy để chống Nonce reuse (tấn công phục hồi private key)
         await this.deleteSessionNonce(sessionId)
-        return new BN(nonceHex, 16)
+        return hexToScalar(nonce)
     }
 
-    async createCommitment(sessionId: string): Promise<{
-        commitment: BN
-        p: BN
-        q: BN
-        g: BN
-    }> {
-        const { nonce, commitment } = generateCommitment(this.p, this.q, this.g)
+    async createCommitment(sessionId: string): Promise<{ cI: string; rhoI: string }> {
+        const { nonce, commitment } = generateCommitment(this.params)
         await this.setSessionNonce(sessionId, nonce)
 
         return {
-            commitment,
-            p: this.p,
-            q: this.q,
-            g: this.g
+            cI: pointToHex(commitment),
+            rhoI: pointToHex(this.publicKey)
         }
     }
 
-    async signPartial(sessionId: string, rHex: string): Promise<BN> {
+    async signPartial(sessionId: string, rHex: string): Promise<{ sI: string }> {
         const nonce = await this.getSessionNonce(sessionId)
-        const r = new BN(rHex, 16)
+        const r = hexToScalar(rHex)
+        const sI = signPartial(nonce, this.privateKey, r, this.params)
 
-        return signPartial(nonce, this.privateKey, r, this.q)
+        return {
+            sI: scalarToHex(sI)
+        }
     }
 }
