@@ -1,11 +1,6 @@
-import {
-    GetVoteByBlindedHashDto,
-    SignBlindedVoteDto,
-    StartSessionDto,
-    SubmitBlindedVoteHashDto,
-    UpdateRevealedStatusDto
-} from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedCommitmentDto } from '@libs/types/coordinator/vote.dto'
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { MongoIdDto } from '@libs/types/common.dto'
 import { CONFIGURATION } from '../../configuration'
 import { ClientProxy } from '@nestjs/microservices'
 import { ModuleRef } from '@nestjs/core'
@@ -20,6 +15,7 @@ import {
     aggregateSignatures,
     computeCollectiveCommitment,
     computeCollectivePublicKey,
+    EcParams,
     getParams,
     hexToPoint,
     hexToScalar,
@@ -27,7 +23,6 @@ import {
     isValidScalarHex,
     pointToHex
 } from '@libs/ec-schnorr'
-import { MongoIdDto } from '@libs/types/common.dto'
 
 type SessionSignedCache = {
     signed: boolean
@@ -50,6 +45,13 @@ export class AppService {
         this.signingNodeClients = CONFIGURATION.COORDINATOR_CONFIG.SIGNING_NODES_TCP_NAME.map((serviceName) =>
             this.moduleRef.get<ClientProxy>(`TCP_${serviceName}`, { strict: false })
         )
+    }
+
+    async getVoteCount(dto: MongoIdDto): Promise<number> {
+        const cached = await this.cacheManager.get<number>(`election:vote:count:${dto.id}`)
+        if (cached !== null && cached !== undefined) return cached
+
+        return await this.prisma.vote.count({ where: { electionId: dto.id } })
     }
 
     async startSession(dto: StartSessionDto) {
@@ -121,7 +123,7 @@ export class AppService {
         }
     }
 
-    async signBlindedVote(dto: SignBlindedVoteDto) {
+    async signBlindedVote(dto: SignBlindedVoteDto, ecParams: EcParams) {
         //SECTION - Kiểm tra session đã signed chưa
         const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
 
@@ -132,8 +134,6 @@ export class AppService {
         if (existSession.signed) {
             throw new ConflictException('Session:sign signed already')
         }
-
-        const ecParams = getParams()
 
         //SECTION - Gửi rHex đến các signing node và nhận signature results
         const signatureResults = await Promise.all(
@@ -153,7 +153,7 @@ export class AppService {
             }
         })
 
-        //SECTION - Tính signature tập thể
+        //SE    CTION - Tính signature tập thể
         const partialSignatures = signatureResults.map((r) => hexToScalar(r.sI))
         const signature = aggregateSignatures(partialSignatures, ecParams)
         const signatureHex = signature.toString(16)
@@ -175,7 +175,7 @@ export class AppService {
         }
     }
 
-    async submitBlindedVoteHash(dto: SubmitBlindedVoteHashDto) {
+    async submitBlindedCommitment(dto: SubmitBlindedCommitmentDto) {
         //SECTION - Kiểm tra session đã signature có hợp lệ không
         const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
 
@@ -201,27 +201,28 @@ export class AppService {
 
         await this.electionService.checkActiveElectionById({ id: dto.electionId })
 
-        const existVote = await this.prisma.vote.findUnique({
-            where: {
-                electionId_voterId: {
-                    electionId: dto.electionId,
-                    voterId: dto.voterId
-                }
-            }
-        })
-
-        if (existVote) {
-            throw new ConflictException('Voter already voted in this election')
-        }
-
         try {
-            const vote = await this.prisma.vote.create({
-                data: {
-                    electionId: dto.electionId,
-                    voterId: dto.voterId,
-                    blindedVoteHash: dto.blindedVoteHash,
-                    revealed: false
+            const vote = await this.prisma.$transaction(async (tx) => {
+                const existVote = await tx.vote.findUnique({
+                    where: {
+                        electionId_voterId: {
+                            electionId: dto.electionId,
+                            voterId: dto.voterId
+                        }
+                    }
+                })
+
+                if (existVote) {
+                    throw new ConflictException('Voter already voted in this election')
                 }
+
+                return await tx.vote.create({
+                    data: {
+                        electionId: dto.electionId,
+                        voterId: dto.voterId,
+                        blindedCommitment: dto.blindedCommitment
+                    }
+                })
             })
 
             this.cacheManager.set(
@@ -237,51 +238,5 @@ export class AppService {
         } catch (e) {
             handlePrismaError(e)
         }
-    }
-
-    async getVoteByBlindedHash(dto: GetVoteByBlindedHashDto) {
-        return await this.prisma.vote.findUnique({
-            where: {
-                electionId_blindedVoteHash: {
-                    electionId: dto.electionId,
-                    blindedVoteHash: dto.blindedVoteHash
-                }
-            }
-        })
-    }
-
-    async checkExistUnrevealedVote(dto: MongoIdDto): Promise<boolean> {
-        const remainingUnrevealedVote = await this.prisma.vote.findFirst({
-            where: {
-                electionId: dto.id,
-                revealed: false
-            },
-            select: { id: true }
-        })
-
-        return !!remainingUnrevealedVote
-    }
-
-    async updateRevealedStatus(dto: UpdateRevealedStatusDto) {
-        const vote = await this.getVoteByBlindedHash({
-            electionId: dto.electionId,
-            blindedVoteHash: dto.blindedVoteHash
-        })
-
-        if (!vote) {
-            throw new NotFoundException('Vote not found')
-        }
-
-        await this.prisma.vote.update({
-            where: {
-                electionId_blindedVoteHash: {
-                    electionId: dto.electionId,
-                    blindedVoteHash: dto.blindedVoteHash
-                }
-            },
-            data: {
-                revealed: true
-            }
-        })
     }
 }

@@ -14,6 +14,8 @@ export {
     hashToScalar,
     bytesToBigInt,
     bigIntToBytes,
+    bytesToHex,
+    sha256,
     SCALAR_BYTES,
     POINT_BYTES
 } from './lib/utils'

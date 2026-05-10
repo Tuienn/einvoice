@@ -1,33 +1,37 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import {
-    BadRequestException,
-    ConflictException,
-    ForbiddenException,
-    Inject,
-    Injectable,
-    NotFoundException
-} from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../infrastructure/prisma/prisma.service'
 import { RevealVoteDto } from '@libs/types/reveal-vote/app.dto'
-import { EcParams, hashToScalar, hexToPoint, hexToScalar, scalarToBuffer, scalarToHex, verify } from '@libs/ec-schnorr'
+import {
+    EcParams,
+    SCALAR_BYTES,
+    bytesToHex,
+    hexToPoint,
+    hexToScalar,
+    scalarToBuffer,
+    sha256,
+    verify
+} from '@libs/ec-schnorr'
 import { CONFIGURATION } from '../configuration'
 import { ClientProxy } from '@nestjs/microservices'
 import { lastValueFrom } from 'rxjs'
 
 @Injectable()
 export class AppService {
+    private readonly logger = new Logger(AppService.name)
+
     constructor(
         private readonly prisma: PrismaService,
         @Inject(`TCP_${CONFIGURATION.REVEAL_VOTE_CONFIG.COORDINATOR_TCP_NAME}`)
         private readonly coordinatorClient: ClientProxy
     ) {}
 
-    private async computeBlindedVoteHash(candidateId: string, h: bigint, sPrime: bigint, params: EcParams) {
-        const messageBuf = Buffer.from(candidateId, 'utf8')
-        const hBuf = scalarToBuffer(h)
-        const sPrimeBuf = scalarToBuffer(sPrime)
-        return scalarToHex(hashToScalar([messageBuf, hBuf, sPrimeBuf], params.n))
+    private computeRevealKey(h: bigint, sPrime: bigint): string {
+        const buf = new Uint8Array(SCALAR_BYTES * 2)
+        buf.set(scalarToBuffer(h), 0)
+        buf.set(scalarToBuffer(sPrime), SCALAR_BYTES)
+        return bytesToHex(sha256(buf))
     }
 
     async revealVote(dto: RevealVoteDto, ecParams: EcParams) {
@@ -62,7 +66,7 @@ export class AppService {
         const sPrime = hexToScalar(dto.sPrime)
         const rho = hexToPoint(existElection!.collectivePublicKey, ecParams)
 
-        //SECTION - Kiểm tra signature
+        //SECTION - Kiểm tra signature,  Đây là điểm tin cậy duy nhất: chữ ký tập thể chỉ có thể được tạo qua phiên blind sign hợp lệ
         const messageBuf = Buffer.from(dto.candidateId, 'utf-8')
         const isValidSignature = verify(messageBuf, h, sPrime, ecParams, rho)
 
@@ -71,67 +75,60 @@ export class AppService {
         }
 
         //SECTION - Tính blindedVoteHash
-        const computedBlindedVoteHash = await this.computeBlindedVoteHash(dto.candidateId, h, sPrime, ecParams)
+        const revealKey = this.computeRevealKey(h, sPrime)
 
         //SECTION - Kiểm tra blindedVoteHash có tồn tại trong database kchống anti-replay attack
-        const existVote = await this.prisma.revealedVote.findUnique({
-            where: {
-                electionId_blindedVoteHash: {
-                    electionId: dto.electionId,
-                    blindedVoteHash: computedBlindedVoteHash
+        const revealedVote = await this.prisma.$transaction(async (tx) => {
+            const existRevealVote = await tx.revealedVote.findUnique({
+                where: {
+                    electionId_revealKey: {
+                        electionId: dto.electionId,
+                        revealKey
+                    }
                 }
-            }
-        })
-
-        if (existVote) {
-            throw new ConflictException('Vote has already been revealed')
-        }
-
-        //SECTION - Kiểm tra vote có tồn tại trong bảng votes không
-        const existSubmittedVote = await lastValueFrom(
-            this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.GET_VOTE_BY_BLINDED_HASH, {
-                electionId: dto.electionId,
-                blindedVoteHash: computedBlindedVoteHash
             })
-        )
 
-        if (!existSubmittedVote) {
-            throw new NotFoundException('No corresponding submitted vote found for the revealed vote')
-        }
-
-        if (existSubmittedVote.revealed) {
-            throw new ConflictException('This vote has already been revealed')
-        }
-
-        const revealedVote = await this.prisma.revealedVote.create({
-            data: {
-                electionId: dto.electionId,
-                candidateId: dto.candidateId,
-                blindedVoteHash: computedBlindedVoteHash,
-                signature: {
-                    h: dto.h,
-                    sPrime: dto.sPrime
-                }
+            if (existRevealVote) {
+                throw new ConflictException('Vote has already been revealed')
             }
-        })
 
-        //SECTION - Cập nhật revealed = true cho vote đã được reveal
-        await this.coordinatorClient.emit(COORDINATOR_MESSAGE_PATTERNS.UPDATE_REVEALED_STATUS, {
-            electionId: dto.electionId,
-            blindedVoteHash: computedBlindedVoteHash
+            return await tx.revealedVote.create({
+                data: {
+                    electionId: dto.electionId,
+                    candidateId: dto.candidateId,
+                    revealKey,
+                    signature: {
+                        h: dto.h,
+                        sPrime: dto.sPrime
+                    }
+                }
+            })
         })
 
         //SECTION - Auto-transition closed → completed khi mọi phiếu đã reveal
-        const remainingUnrevealedVote = await lastValueFrom(
-            this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.CHECK_EXIST_UNREVEALED_VOTE, {
-                id: dto.electionId
-            })
+        const electionCompleted = await this.triggerCompleteIfAllRevealed(dto.electionId).catch((err) =>
+            this.logger.error(`Auto-complete election ${dto.electionId} failed: ${err?.message}`)
         )
 
-        if (!remainingUnrevealedVote) {
-            await this.coordinatorClient.emit(COORDINATOR_MESSAGE_PATTERNS.COMPLETE_ELCTION, { id: dto.electionId })
-        }
+        return { ...revealedVote, electionCompleted }
+    }
 
-        return { ...revealedVote, electionCompleted: !remainingUnrevealedVote }
+    private async triggerCompleteIfAllRevealed(electionId: string): Promise<boolean> {
+        const [revealCount, voteCount] = await Promise.all([
+            this.prisma.revealedVote.count({ where: { electionId } }),
+            lastValueFrom(
+                this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.GET_VOTE_COUNT, { id: electionId })
+            ) as Promise<number>
+        ])
+
+        if (voteCount > 0 && revealCount >= voteCount) {
+            await lastValueFrom(
+                this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.COMPLETE_ELECTION, { id: electionId })
+            )
+            this.logger.debug(`Election ${electionId} auto-completed: ${revealCount}/${voteCount} votes revealed`)
+
+            return true
+        }
+        return false
     }
 }

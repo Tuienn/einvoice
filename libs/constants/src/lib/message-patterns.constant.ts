@@ -20,7 +20,7 @@ export const COORDINATOR_MESSAGE_PATTERNS = {
     CREATE_ELECTION: 'election.create_election',
     START_ELECTION: 'election.start_election',
     END_ELECTION: 'election.end_election',
-    COMPLETE_ELCTION: 'election.complete_election',
+    COMPLETE_ELECTION: 'election.complete_election',
     GET_ELECTION_BY_ID: 'election.get_election_by_id',
     ADD_VOTERS_TO_ELECTION: 'election.add_voters_to_election',
     GET_VOTER_IN_ELECTION: 'election.get_voter_in_election',
@@ -28,10 +28,8 @@ export const COORDINATOR_MESSAGE_PATTERNS = {
 
     START_SESSION: 'vote.start_vote_session',
     SIGN_BLINDED_VOTE: 'vote.sign_blinded_vote',
-    SUBMIT_UNBLINDED_VOTE: 'vote.submit_unblinded_vote',
-    GET_VOTE_BY_BLINDED_HASH: 'vote.get_vote_by_blinded_hash',
-    UPDATE_REVEALED_STATUS: 'vote.update_revealed_status',
-    CHECK_EXIST_UNREVEALED_VOTE: 'vote.check_exist_unrevealed_vote'
+    SUBMIT_BLINDED_COMMITMENT: 'vote.submit_blinded_commitment',
+    GET_VOTE_COUNT: 'vote.get_vote_count'
 } as const
 
 export const REVEAL_VOTE_MESSAGE_PATTERNS = {

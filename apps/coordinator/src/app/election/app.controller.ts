@@ -39,7 +39,7 @@ export class AppController {
         return await this.appService.closeElection(dto)
     }
 
-    @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.COMPLETE_ELCTION)
+    @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.COMPLETE_ELECTION)
     async completeElection(@Payload() dto: MongoIdDto) {
         return await this.appService.completeElection(dto)
     }

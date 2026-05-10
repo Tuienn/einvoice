@@ -5,7 +5,7 @@ import { ClientProxy } from '@nestjs/microservices'
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { lastValueFrom } from 'rxjs'
 import { MongoIdDto } from '@libs/types/common.dto'
-import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedCommitmentDto } from '@libs/types/coordinator/vote.dto'
 
 @Injectable()
 export class AppService {
@@ -47,7 +47,7 @@ export class AppService {
         return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.SIGN_BLINDED_VOTE, dto))
     }
 
-    async submitBlindedVoteHash(dto: SubmitBlindedVoteHashDto) {
-        return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.SUBMIT_UNBLINDED_VOTE, dto))
+    async submitBlindedCommitment(dto: SubmitBlindedCommitmentDto) {
+        return lastValueFrom(this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.SUBMIT_BLINDED_COMMITMENT, dto))
     }
 }

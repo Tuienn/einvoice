@@ -8,7 +8,7 @@ import { ResponseDto } from '@libs/types/response.dto'
 import { MongoIdDto } from '@libs/types/common.dto'
 import { CurrentUser } from '@libs/decorators/current-user.decorator'
 import { RequestWithUser } from '@libs/types/identity/auth.type'
-import { SignBlindedVoteDto, SubmitBlindedVoteHashDto } from '@libs/types/coordinator/vote.dto'
+import { SignBlindedVoteDto, SubmitBlindedCommitmentDto } from '@libs/types/coordinator/vote.dto'
 
 @ApiTags('Coordinator')
 @Controller('coordinator')
@@ -189,7 +189,7 @@ export class AppController {
     }
 
     @Roles('VOTER')
-    @Post('vote/:electionId/submit')
+    @Post('vote/:electionId/submit-blinded-commitment')
     @ApiParam({
         name: 'electionId',
         type: String,
@@ -197,11 +197,11 @@ export class AppController {
         examples: { example1: { value: '69f6a3eac5bfa7c9d91adccb' } }
     })
     @ApiBody({
-        type: SubmitBlindedVoteHashDto,
+        type: SubmitBlindedCommitmentDto,
         examples: {
             example1: {
                 value: {
-                    blindedVoteHash: '1234567890',
+                    blindedCommitment: '1234567890',
                     signatureHex: '1234567890',
                     sessionId: 'aef44e20-48d8-4817-a1ae-3cfe79f9e049'
                 }
@@ -209,12 +209,12 @@ export class AppController {
         }
     })
     @HttpCode(HttpStatus.OK)
-    async submitBlindedVoteHash(
-        @Param() params: Pick<SubmitBlindedVoteHashDto, 'electionId'>,
-        @Body() dto: Omit<SubmitBlindedVoteHashDto, 'electionId' | 'voterId'>,
+    async submitBlindedCommitment(
+        @Param() params: Pick<SubmitBlindedCommitmentDto, 'electionId'>,
+        @Body() dto: Omit<SubmitBlindedCommitmentDto, 'electionId' | 'voterId'>,
         @CurrentUser() user: RequestWithUser
     ) {
-        const result = await this.appService.submitBlindedVoteHash({
+        const result = await this.appService.submitBlindedCommitment({
             ...dto,
             electionId: params.electionId,
             voterId: user.userId
@@ -222,7 +222,7 @@ export class AppController {
 
         return new ResponseDto({
             data: result,
-            message: 'Blinded vote hash submitted successfully',
+            message: 'Blinded commitment submitted successfully',
             statusCode: HttpStatus.OK
         })
     }

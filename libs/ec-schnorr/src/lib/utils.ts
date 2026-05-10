@@ -88,3 +88,5 @@ export function hashToScalar(buffers: (Uint8Array | ArrayBuffer)[], n: bigint): 
     }
     return modN(bytesToBigInt(h.digest()), n)
 }
+
+export { bytesToHex, sha256 }
