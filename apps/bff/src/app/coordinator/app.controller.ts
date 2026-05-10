@@ -178,8 +178,11 @@ export class AppController {
         }
     })
     @HttpCode(HttpStatus.OK)
-    async signBlindedVote(@Body() dto: SignBlindedVoteDto) {
-        const result = await this.appService.signBlindedVote(dto)
+    async signBlindedVote(@Body() dto: Omit<SignBlindedVoteDto, 'voterId'>, @CurrentUser() user: RequestWithUser) {
+        const result = await this.appService.signBlindedVote({
+            ...dto,
+            voterId: user.userId
+        })
 
         return new ResponseDto({
             data: result,

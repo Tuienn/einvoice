@@ -46,6 +46,10 @@ export class AppService {
             this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.COLLECTIVE_PUBLIC_KEY, {})
         )
 
+        if (existElection!.status === 'COMPLETED') {
+            throw new ForbiddenException('Election is already completed')
+        }
+
         if (existElection!.status !== 'CLOSED') {
             throw new ForbiddenException('Election is not closed')
         }

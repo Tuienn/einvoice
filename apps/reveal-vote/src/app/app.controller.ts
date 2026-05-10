@@ -39,7 +39,7 @@ export class AppController {
         const ecParams = getParams()
 
         if (!isValidScalarHex(dto.h, ecParams.n) || !isValidScalarHex(dto.sPrime, ecParams.n)) {
-            throw new BadRequestException(invalidDataField('h or sPrime'))
+            throw new BadRequestException(invalidDataField('h or sPrime', 'hex string of scalar'))
         }
 
         const result = await this.appService.revealVote(

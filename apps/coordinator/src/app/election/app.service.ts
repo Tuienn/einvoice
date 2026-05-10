@@ -245,8 +245,8 @@ export class AppService {
                     throw new UnprocessableEntityException('At least 2 candidates are required')
                 }
 
-                if (!election.electionVoters || election.electionVoters.length < 2) {
-                    throw new UnprocessableEntityException('At least 2 voters are required to start the election')
+                if (!election.electionVoters || election.electionVoters.length < 5) {
+                    throw new UnprocessableEntityException('At least 5 voters are required to start the election')
                 }
 
                 return await tx.election.update({
@@ -321,6 +321,10 @@ export class AppService {
                         id: dto.id
                     }
                 })
+
+                if (election.status === ElectionStatus.COMPLETED) {
+                    throw new ConflictException('Election already completed')
+                }
 
                 if (election.status !== ElectionStatus.CLOSED) {
                     throw new ConflictException('Only CLOSED election can be completed')

@@ -21,13 +21,14 @@ import {
     hexToScalar,
     isValidPointHex,
     isValidScalarHex,
-    pointToHex
+    pointToHex,
+    scalarToHex
 } from '@libs/ec-schnorr'
 
 type SessionSignedCache = {
+    sessionId: string
     signed: boolean
     electionId: string
-    voterId: string
     signatureHex?: string
     voted: boolean
 }
@@ -103,13 +104,13 @@ export class AppService {
         const collectiveCommitment = computeCollectiveCommitment(commitments, ecParams)
         const collectivePublicKey = computeCollectivePublicKey(publicKeys, ecParams)
 
-        //NOTE - Lưu sessionId chống Double-signing (1 voter 1 vote)
+        //NOTE - Lưu sessionId theo voterId chống Double-signing (1 voter 1 vote)
         await this.cacheManager.set(
-            `session:signed:${sessionId}`,
+            `session:signed:${dto.voterId}`,
             {
+                sessionId: sessionId,
                 signed: false,
                 electionId: electionVoter.electionId,
-                voterId: electionVoter.voterId,
                 voted: false
             },
             CONFIGURATION.COORDINATOR_CONFIG.REDIS_SESSION_CACHE_TTL
@@ -125,7 +126,7 @@ export class AppService {
 
     async signBlindedVote(dto: SignBlindedVoteDto, ecParams: EcParams) {
         //SECTION - Kiểm tra session đã signed chưa
-        const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
+        const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.voterId}`)
 
         if (!existSession) {
             throw new NotFoundException('Session:sign not found or expired')
@@ -156,14 +157,14 @@ export class AppService {
         //SE    CTION - Tính signature tập thể
         const partialSignatures = signatureResults.map((r) => hexToScalar(r.sI))
         const signature = aggregateSignatures(partialSignatures, ecParams)
-        const signatureHex = signature.toString(16)
+        const signatureHex = scalarToHex(signature)
 
         this.cacheManager.set(
-            `session:signed:${dto.sessionId}`,
+            `session:signed:${dto.voterId}`,
             {
+                sessionId: existSession.sessionId,
                 signed: true,
                 electionId: existSession.electionId,
-                voterId: existSession.voterId,
                 signatureHex,
                 voted: false
             },
@@ -177,7 +178,7 @@ export class AppService {
 
     async submitBlindedCommitment(dto: SubmitBlindedCommitmentDto) {
         //SECTION - Kiểm tra session đã signature có hợp lệ không
-        const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.sessionId}`)
+        const existSession = await this.cacheManager.get<SessionSignedCache>(`session:signed:${dto.voterId}`)
 
         if (!existSession) {
             throw new NotFoundException('Session:sign not found or expired')
@@ -189,10 +190,10 @@ export class AppService {
 
         if (
             existSession.signatureHex !== dto.signatureHex ||
-            existSession.voterId !== dto.voterId ||
+            existSession.sessionId !== dto.sessionId ||
             existSession.electionId !== dto.electionId
         ) {
-            throw new ConflictException('Signature, voter or election mismatch')
+            throw new ConflictException('Signature, session or election mismatch')
         }
 
         if (existSession.voted) {
@@ -226,7 +227,7 @@ export class AppService {
             })
 
             this.cacheManager.set(
-                `session:signed:${dto.sessionId}`,
+                `session:signed:${dto.voterId}`,
                 {
                     ...existSession,
                     voted: true

@@ -3,8 +3,9 @@ import { AppService } from './app.service'
 import { SignBlindedVoteDto, StartSessionDto, SubmitBlindedCommitmentDto } from '@libs/types/coordinator/vote.dto'
 import { MessagePattern, Payload } from '@nestjs/microservices'
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
-import { getParams, isReasonableHexLength } from '@libs/ec-schnorr'
+import { getParams, isReasonableHexLength, isValidScalarHex } from '@libs/ec-schnorr'
 import { MongoIdDto } from '@libs/types/common.dto'
+import { invalidDataField } from '@libs/constants/text.constant'
 
 @Controller()
 export class AppController {
@@ -37,6 +38,10 @@ export class AppController {
 
         if (!isReasonableHexLength(dto.blindedCommitment, ecParams.SCALAR_BYTES + 4)) {
             throw new BadRequestException('Invalid blindedCommitment length')
+        }
+
+        if (!isValidScalarHex(dto.blindedCommitment, ecParams.n)) {
+            throw new BadRequestException(invalidDataField('blindedCommitment', 'hex string of scalar'))
         }
 
         return await this.appService.submitBlindedCommitment(dto)
