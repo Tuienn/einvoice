@@ -50,7 +50,5 @@ Thumbs.db
 # Generated Prisma client code
 /apps/*/generated/prisma
 
-# Ignore keys files
-keys/*.json
 
 

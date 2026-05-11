@@ -23,9 +23,11 @@ export class AppService {
     }
 
     async generateKeyPairForElection(electionId: string): Promise<{ publicKey: string }> {
+        //SECTION -  Nếu đã tồn tại key pair cho election này, trả về public key mà không tạo mới
+        //NOTE - Tránh trường hợp cả 3 node cùng gen nhưng có 1 node fail -> khi gen lại thì lấy luôn key có sẵn
         const existing = await this.prisma.keyPair.findUnique({ where: { electionId } })
         if (existing) {
-            return { publicKey: existing.publicKey } //NOTE -  Nếu đã tồn tại key pair cho election này, trả về public key mà không tạo mới
+            return { publicKey: existing.publicKey }
         }
 
         const ecParams = getParams()

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
 import { COORDINATOR_MESSAGE_PATTERNS } from '@libs/constants/message-patterns.constant'
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '../infrastructure/prisma/prisma.service'
@@ -79,21 +80,9 @@ export class AppService {
         const revealKey = this.computeRevealKey(h, sPrime)
 
         //SECTION - Kiểm tra blindedVoteHash có tồn tại trong database kchống anti-replay attack
-        const revealedVote = await this.prisma.$transaction(async (tx) => {
-            const existRevealVote = await tx.revealedVote.findUnique({
-                where: {
-                    electionId_revealKey: {
-                        electionId: dto.electionId,
-                        revealKey
-                    }
-                }
-            })
-
-            if (existRevealVote) {
-                throw new ConflictException('Vote has already been revealed')
-            }
-
-            return await tx.revealedVote.create({
+        try {
+            //NOTE - revealedVote có @@unique([electionId, revealKey]) đã đảm bảo auto validate chống replay
+            const revealedVote = await this.prisma.revealedVote.create({
                 data: {
                     electionId: dto.electionId,
                     candidateId: dto.candidateId,
@@ -104,14 +93,15 @@ export class AppService {
                     }
                 }
             })
-        })
+            //SECTION - Auto-transition closed → completed khi mọi phiếu đã reveal
+            const electionCompleted = await this.triggerCompleteIfAllRevealed(dto.electionId).catch((err) =>
+                this.logger.error(`Auto-complete election ${dto.electionId} failed: ${err?.message}`)
+            )
 
-        //SECTION - Auto-transition closed → completed khi mọi phiếu đã reveal
-        const electionCompleted = await this.triggerCompleteIfAllRevealed(dto.electionId).catch((err) =>
-            this.logger.error(`Auto-complete election ${dto.electionId} failed: ${err?.message}`)
-        )
-
-        return { ...revealedVote, electionCompleted }
+            return { ...revealedVote, electionCompleted }
+        } catch (e) {
+            handlePrismaError(e, [{ code: 'P2002', message: 'This vote has already been revealed' }])
+        }
     }
 
     private async triggerCompleteIfAllRevealed(electionId: string): Promise<boolean> {

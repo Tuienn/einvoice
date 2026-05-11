@@ -146,39 +146,46 @@ export class AppService {
     }
 
     async addVotersToElection(dto: MongoIdDto & VoterIdsDto) {
+        //NOTE - dentity service chậm hoặc timeout → transaction của MongoDB bị giữ mở → timeout.
+        // Ngoài ra, validation voter xảy ra bên trong transaction tăng dead lock
         try {
-            return await this.prisma.$transaction(async (tx) => {
-                const election = await tx.election.findUniqueOrThrow({
-                    where: {
-                        id: dto.id
-                    }
+            const election = await this.prisma.election.findUniqueOrThrow({
+                where: {
+                    id: dto.id
+                }
+            })
+
+            if (election.status !== ElectionStatus.PENDING) {
+                throw new ConflictException('Only PENDING election can be added voters')
+            }
+
+            //SECTION - Kiểm tra voterIds có tồn tại và active không
+            const voters = await lastValueFrom(
+                this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
+                    ids: dto.voterIds,
+                    role: 'VOTER'
                 })
+            )
 
-                if (election.status !== ElectionStatus.PENDING) {
-                    throw new ConflictException('Only PENDING election can be added voters')
-                }
+            const requestedUnique = [...new Set(dto.voterIds)]
+            const foundIds = new Set(voters.map((v: any) => v.id))
+            const missingIds = requestedUnique.filter((id) => !foundIds.has(id))
 
-                //SECTION - Kiểm tra voterIds có tồn tại và active không
-                const voters = await lastValueFrom(
-                    this.identityClient.send(IDENTITY_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
-                        ids: dto.voterIds,
-                        role: 'VOTER'
-                    })
+            if (missingIds.length > 0) {
+                throw new BadRequestException(
+                    `Voter IDs do not exist or are not users with role VOTER: ${missingIds.join(', ')}`
                 )
+            }
 
-                const requestedUnique = [...new Set(dto.voterIds)]
-                const foundIds = new Set(voters.map((v: any) => v.id))
-                const missingIds = requestedUnique.filter((id) => !foundIds.has(id))
+            const inactiveIds = voters.filter((v: any) => !v.isActive).map((v: any) => v.id)
+            if (inactiveIds.length > 0) {
+                throw new BadRequestException(`Some voters are inactive: ${inactiveIds.join(', ')}`)
+            }
 
-                if (missingIds.length > 0) {
-                    throw new BadRequestException(
-                        `Voter IDs do not exist or are not users with role VOTER: ${missingIds.join(', ')}`
-                    )
-                }
-
-                const inactiveIds = voters.filter((v: any) => !v.isActive).map((v: any) => v.id)
-                if (inactiveIds.length > 0) {
-                    throw new BadRequestException(`Some voters are inactive: ${inactiveIds.join(', ')}`)
+            return await this.prisma.$transaction(async (tx) => {
+                const current = await tx.election.findUniqueOrThrow({ where: { id: dto.id } })
+                if (current.status !== ElectionStatus.PENDING) {
+                    throw new ConflictException('Only PENDING election can be added voters')
                 }
 
                 //SECTION - Thêm voters vào election
@@ -227,7 +234,7 @@ export class AppService {
             throw new UnprocessableEntityException('At least 3 voters are required')
         }
 
-        //SECTION - Generate keys — ngoài transaction, idempotent
+        //SECTION - Generate keys — ngoài transaction, tránh bị lock transaction
         const collectivePublicKeyHex = await this.generateCollectivePublicKey(dto.id)
 
         //SECTION - Commit — transaction ngắn, chỉ write
@@ -256,7 +263,7 @@ export class AppService {
 
     async closeElection(dto: MongoIdDto) {
         try {
-            const { updatedElection, voteCount } = await this.prisma.$transaction(async (tx) => {
+            const updatedElection = await this.prisma.$transaction(async (tx) => {
                 const election = await tx.election.findUniqueOrThrow({
                     where: {
                         id: dto.id
@@ -275,16 +282,14 @@ export class AppService {
                     throw new ConflictException('Only ACTIVE election can be closed')
                 }
 
-                const [updatedElection, voteCount] = await Promise.all([
-                    tx.election.update({
-                        where: { id: dto.id },
-                        data: { status: ElectionStatus.CLOSED }
-                    }),
-                    tx.vote.count({ where: { electionId: dto.id } })
-                ])
-
-                return { updatedElection, voteCount }
+                return await tx.election.update({
+                    where: { id: dto.id },
+                    data: { status: ElectionStatus.CLOSED }
+                })
             })
+            //NOTE - vote.count sau transaction — an toàn vì election đã CLOSED, không nhận vote mới
+            // submitBlindedCommitment gọi checkActiveElectionById trước khi insert vote — một vote mới không thể lọt vào election đã CLOSED
+            const voteCount = await this.prisma.vote.count({ where: { electionId: dto.id } })
 
             await this.cacheManager.set(
                 `election:vote:count:${dto.id}`,

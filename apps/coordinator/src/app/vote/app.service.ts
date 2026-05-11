@@ -193,7 +193,7 @@ export class AppService {
         const signature = aggregateSignatures(partialSignatures, ecParams)
         const signatureHex = scalarToHex(signature)
 
-        this.cacheManager.set(
+        await this.cacheManager.set(
             `session:signed:${dto.voterId}`,
             {
                 sessionId: existSession.sessionId,
@@ -238,30 +238,15 @@ export class AppService {
         await this.electionService.checkActiveElectionById({ id: dto.electionId })
 
         try {
-            const vote = await this.prisma.$transaction(async (tx) => {
-                const existVote = await tx.vote.findUnique({
-                    where: {
-                        electionId_voterId: {
-                            electionId: dto.electionId,
-                            voterId: dto.voterId
-                        }
-                    }
-                })
-
-                if (existVote) {
-                    throw new ConflictException('Voter already voted in this election')
+            const vote = await this.prisma.vote.create({
+                data: {
+                    electionId: dto.electionId,
+                    voterId: dto.voterId,
+                    blindedCommitment: dto.blindedCommitment
                 }
-
-                return await tx.vote.create({
-                    data: {
-                        electionId: dto.electionId,
-                        voterId: dto.voterId,
-                        blindedCommitment: dto.blindedCommitment
-                    }
-                })
             })
 
-            this.cacheManager.set(
+            await this.cacheManager.set(
                 `session:signed:${dto.voterId}`,
                 {
                     ...existSession,
@@ -272,7 +257,7 @@ export class AppService {
 
             return vote
         } catch (e) {
-            handlePrismaError(e)
+            handlePrismaError(e, [{ code: 'P2002', message: 'Voter already voted in this election' }])
         }
     }
 }
