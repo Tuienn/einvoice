@@ -24,7 +24,6 @@ export const COORDINATOR_MESSAGE_PATTERNS = {
     GET_ELECTION_BY_ID: 'election.get_election_by_id',
     ADD_VOTERS_TO_ELECTION: 'election.add_voters_to_election',
     GET_VOTER_IN_ELECTION: 'election.get_voter_in_election',
-    COLLECTIVE_PUBLIC_KEY: 'election.collective_public_key',
 
     START_SESSION: 'vote.start_vote_session',
     SIGN_BLINDED_VOTE: 'vote.sign_blinded_vote',
@@ -37,9 +36,9 @@ export const REVEAL_VOTE_MESSAGE_PATTERNS = {
 } as const
 
 export const SIGNING_NODE_MESSAGE_PATTERNS = {
+    GENERATE_KEY_PAIR: 'signing_node.generate_key_pair',
     CREATE_COMMITMENT: 'signing_node.create_commitment',
     DELETE_SESSION_NONCE: 'signing_node.delete_session_nonce',
     SIGN_PARTIAL: 'signing_node.sign_partial',
-    GET_NODE_INFO: 'signing_node.get_node_info',
     CLEANUP_ELECTION: 'signing_node.cleanup_election'
 } as const

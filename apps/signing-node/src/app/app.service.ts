@@ -1,9 +1,11 @@
+import { encrypt, decrypt } from '@libs/utils/crypto.util'
 import { ElectionIdDto, SessionIdDto, SignPartialDto } from '@libs/types/signing-node/app.dto'
-import { Injectable } from '@nestjs/common'
+import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common'
 import { CryptoService } from '../infrastructure/crypto/crypto.service'
 import { CONFIGURATION } from '../configuration'
 import { PrismaService } from '../infrastructure/prisma/prisma.service'
 import { handlePrismaError } from '@libs/utils/handle-prisma-error.util'
+import { generateKeyPair, getParams, hexToPoint, hexToScalar, pointToHex, scalarToHex } from '@libs/ec-schnorr'
 
 @Injectable()
 export class AppService {
@@ -12,8 +14,75 @@ export class AppService {
         private readonly prisma: PrismaService
     ) {}
 
-    async createCommitment(dto: SessionIdDto) {
-        const result = await this.cryptoService.createCommitment(dto.sessionId)
+    private computeEncryptKeyBuf(): Buffer {
+        const encryptKeyBuf = Buffer.from(CONFIGURATION.SIGNING_NODE_CONFIG.ENCRYPTION_KEY, 'base64')
+        if (encryptKeyBuf.length !== 32) {
+            throw new BadGatewayException('ENCRYPTION_KEY must be 32 bytes (256-bit) for AES-256')
+        }
+        return encryptKeyBuf
+    }
+
+    async generateKeyPairForElection(electionId: string): Promise<{ publicKey: string }> {
+        const existing = await this.prisma.keyPair.findUnique({ where: { electionId } })
+        if (existing) {
+            return { publicKey: existing.publicKey } //NOTE -  Nếu đã tồn tại key pair cho election này, trả về public key mà không tạo mới
+        }
+
+        const ecParams = getParams()
+        const keyPair = generateKeyPair(ecParams)
+
+        const encryptKeyBuf = this.computeEncryptKeyBuf()
+
+        const publicKeyHex = pointToHex(keyPair.publicKey)
+
+        try {
+            await this.prisma.keyPair.create({
+                data: {
+                    electionId,
+                    publicKey: publicKeyHex,
+                    privateKey: encrypt(scalarToHex(keyPair.privateKey), encryptKeyBuf)
+                }
+            })
+        } catch (e) {
+            handlePrismaError(e, [{ code: 'P2002', message: 'Key pair for election already exists' }])
+        }
+
+        return {
+            publicKey: publicKeyHex
+        }
+    }
+
+    private async getPrivateKeyByElectionId(electionId: string): Promise<bigint> {
+        const existKeyPair = await this.prisma.keyPair.findUnique({
+            where: {
+                electionId
+            }
+        })
+
+        if (!existKeyPair) {
+            throw new NotFoundException('Key pair for election not found')
+        }
+
+        const encryptKeyBuf = this.computeEncryptKeyBuf()
+        const privateKeyHex = decrypt(existKeyPair.privateKey, encryptKeyBuf)
+        const privateKey = hexToScalar(privateKeyHex)
+        return privateKey
+    }
+
+    async createCommitment(dto: SessionIdDto & ElectionIdDto) {
+        const existKey = await this.prisma.keyPair.findUnique({
+            where: {
+                electionId: dto.electionId
+            }
+        })
+
+        if (!existKey) {
+            throw new NotFoundException('Key pair for election not found')
+        }
+
+        const publicKey = hexToPoint(existKey.publicKey, getParams())
+
+        const result = await this.cryptoService.createCommitment(dto.sessionId, publicKey)
         return {
             nodeId: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
             cI: result.cI,
@@ -22,6 +91,8 @@ export class AppService {
     }
 
     async signPartial(dto: SignPartialDto) {
+        const privateKey = await this.getPrivateKeyByElectionId(dto.electionId)
+
         return await this.prisma.$transaction(async (tx) => {
             //SECTION - Atomic dedup TRƯỚC khi ký:
             // Unique index (electionId, voterId) đảm bảo voter chỉ được node này ký
@@ -42,7 +113,7 @@ export class AppService {
 
             //NOTE - Sau khi đã chốt slot dedup, mới gọi crypto sign. Nếu sign fail
             // (nonce hết hạn, rHex sai...), signedVoter đựoc rollback, nên voter có thể thử lại
-            const result = await this.cryptoService.signPartial(dto.sessionId, dto.rHex)
+            const result = await this.cryptoService.signPartial(dto.sessionId, dto.rHex, privateKey)
 
             return {
                 nodeId: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
@@ -56,15 +127,11 @@ export class AppService {
         await this.cryptoService.deleteSessionNonce(dto.sessionId)
     }
 
-    async getNodeInfo() {
-        return {
-            nodeId: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
-            publicKey: this.cryptoService.getPublicKey()
-        }
-    }
-
     async cleanupElection(dto: ElectionIdDto) {
         await this.prisma.signedVoter.deleteMany({
+            where: { electionId: dto.electionId }
+        })
+        await this.prisma.keyPair.deleteMany({
             where: { electionId: dto.electionId }
         })
     }

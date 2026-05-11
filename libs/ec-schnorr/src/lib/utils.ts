@@ -56,7 +56,7 @@ export function hexToPoint(hex: string, params: EcParams): EcPoint {
     const p = params.Point.fromHex(hex)
     p.assertValidity()
     if (p.equals(params.Point.ZERO)) {
-        throw new Error('hexToPoint: điểm là identity (vô hạn)')
+        throw new Error('Point is identity element, not allowed')
     }
     return p
 }

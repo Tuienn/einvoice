@@ -1,59 +1,25 @@
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager'
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { CONFIGURATION } from '../../configuration'
 import {
     getParams,
-    generateKeyPair,
     type EcPoint,
     pointToHex,
     generateCommitment,
     EcParams,
     signPartial,
     hexToScalar,
-    scalarToHex,
-    hexToPoint
+    scalarToHex
 } from '@libs/ec-schnorr'
-import { loadKeysFromJsonFile, saveKeysToJsonFile } from '../utils/key-file-handler.util'
 
 @Injectable()
 export class CryptoService {
     private readonly params: EcParams
-    private readonly publicKey: EcPoint
-    private readonly privateKey: bigint
-    private readonly logger = new Logger(CONFIGURATION.SERVICE_NAME)
 
     constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
         const ecParams = getParams()
 
         this.params = ecParams
-
-        const existingKeys = loadKeysFromJsonFile(`keys/${CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID}.json`)
-        if (existingKeys && existingKeys.privateKey && existingKeys.publicKey) {
-            this.privateKey = hexToScalar(existingKeys.privateKey)
-            this.publicKey = hexToPoint(existingKeys.publicKey, ecParams)
-        } else {
-            const { privateKey, publicKey } = generateKeyPair(ecParams)
-            this.privateKey = privateKey
-            this.publicKey = publicKey
-
-            this.logger.warn('No existing keys found, generated new key pair')
-
-            saveKeysToJsonFile({
-                fileName: CONFIGURATION.SIGNING_NODE_CONFIG.NODE_ID,
-                data: {
-                    privateKey: scalarToHex(this.privateKey),
-                    publicKey: pointToHex(this.publicKey)
-                }
-            })
-        }
-
-        this.logger.debug('CryptoService initialized')
-        this.logger.debug(`Public Key: ${pointToHex(this.publicKey).substring(0, 20)}...`)
-        this.logger.debug(`Private Key: ${scalarToHex(this.privateKey).substring(0, 20)}...`)
-    }
-
-    getPublicKey(): string {
-        return pointToHex(this.publicKey)
     }
 
     async deleteSessionNonce(sessionId: string) {
@@ -89,20 +55,20 @@ export class CryptoService {
         return hexToScalar(nonce)
     }
 
-    async createCommitment(sessionId: string): Promise<{ cI: string; rhoI: string }> {
+    async createCommitment(sessionId: string, publicKey: EcPoint): Promise<{ cI: string; rhoI: string }> {
         const { nonce, commitment } = generateCommitment(this.params)
         await this.setSessionNonce(sessionId, nonce)
 
         return {
             cI: pointToHex(commitment),
-            rhoI: pointToHex(this.publicKey)
+            rhoI: pointToHex(publicKey)
         }
     }
 
-    async signPartial(sessionId: string, rHex: string): Promise<{ sI: string }> {
+    async signPartial(sessionId: string, rHex: string, privateKey: bigint): Promise<{ sI: string }> {
         const nonce = await this.getSessionNonce(sessionId)
         const r = hexToScalar(rHex)
-        const sI = signPartial(nonce, this.privateKey, r, this.params)
+        const sI = signPartial(nonce, privateKey, r, this.params)
 
         return {
             sI: scalarToHex(sI)

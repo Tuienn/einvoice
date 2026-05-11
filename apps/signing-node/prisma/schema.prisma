@@ -29,3 +29,16 @@ model SignedVoter {
   @@unique([electionId, voterId])
   @@map("signed_voters")
 }
+
+model KeyPair {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  electionId String @unique @db.ObjectId
+
+  publicKey  String
+  privateKey String
+
+  createdAt DateTime @default(now())
+
+  @@map("key_pairs")
+}

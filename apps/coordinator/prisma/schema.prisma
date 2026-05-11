@@ -68,14 +68,13 @@ model Vote {
   voter   ElectionVoter @relation(fields: [voterId], references: [id])
 
   blindedCommitment String
-  blockchainRef   String?
+  blockchainRef     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([electionId, voterId])
-  @@index([electionId, createdAt]) //lấy votes của election X, sort theo thời gian tạo
   @@unique([electionId, blindedCommitment]) //đảm bảo không có 2 vote nào có blindedCommitment giống nhau trong cùng 1 election
+  @@index([electionId, createdAt]) //lấy votes của election X, sort theo thời gian tạo
   @@map("votes")
 }
-

@@ -24,6 +24,7 @@ import {
     pointToHex,
     scalarToHex
 } from '@libs/ec-schnorr'
+import { ElectionStatus } from '../../../generated/prisma/enums'
 
 type SessionSignedCache = {
     sessionId: string
@@ -56,7 +57,12 @@ export class AppService {
     }
 
     async startSession(dto: StartSessionDto) {
-        await this.electionService.checkActiveElectionById({ id: dto.electionId })
+        const existElection = await this.electionService.getElectionById({ id: dto.electionId })
+
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (existElection!.status !== ElectionStatus.ACTIVE) {
+            throw new BadRequestException('Election is not active')
+        }
 
         //SECTION - Kiểm tra election và voter có tồn tại không
         const { electionVoter, voter } = await this.electionService.getVoterInElection(dto)
@@ -97,7 +103,12 @@ export class AppService {
 
         const commitmentResults = await Promise.all(
             this.signingNodeClients.map((client) =>
-                lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.CREATE_COMMITMENT, { sessionId }))
+                lastValueFrom(
+                    client.send(SIGNING_NODE_MESSAGE_PATTERNS.CREATE_COMMITMENT, {
+                        sessionId,
+                        electionId: dto.electionId
+                    })
+                )
             )
         )
 
@@ -115,6 +126,13 @@ export class AppService {
         const publicKeys = commitmentResults.map((r) => hexToPoint(r.rhoI, ecParams))
         const collectiveCommitment = computeCollectiveCommitment(commitments, ecParams)
         const collectivePublicKey = computeCollectivePublicKey(publicKeys, ecParams)
+        const collectivePublicKeyHex = pointToHex(collectivePublicKey)
+
+        //SECTION - Kiểm tra collective public key có khớp với election không, chống giả mạo session để lấy chữ ký hợp lệ cho election khác (cross-election replay attack)
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (collectivePublicKeyHex !== existElection!.collectivePublicKey) {
+            throw new BadRequestException('Collective public key mismatch')
+        }
 
         //NOTE - Lưu sessionId theo voterId chống Double-signing (1 voter 1 vote)
         await this.cacheManager.set(
@@ -131,7 +149,7 @@ export class AppService {
         return {
             sessionId,
             collectiveCommitment: pointToHex(collectiveCommitment),
-            collectivePublicKey: pointToHex(collectivePublicKey),
+            collectivePublicKey: collectivePublicKeyHex,
             numNodes: commitmentResults.length
         }
     }
@@ -216,6 +234,7 @@ export class AppService {
             throw new ConflictException('Session:sign already voted')
         }
 
+        //SECTION - Kiểm tra election có đang active không để nhận vote
         await this.electionService.checkActiveElectionById({ id: dto.electionId })
 
         try {

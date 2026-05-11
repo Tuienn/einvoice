@@ -10,8 +10,13 @@ import { invalidDataField } from '@libs/constants/text.constant'
 export class AppController {
     constructor(private readonly appService: AppService) {}
 
+    @MessagePattern(SIGNING_NODE_MESSAGE_PATTERNS.GENERATE_KEY_PAIR)
+    async generateKeyPairForElection(@Payload() dto: ElectionIdDto) {
+        return await this.appService.generateKeyPairForElection(dto.electionId)
+    }
+
     @MessagePattern(SIGNING_NODE_MESSAGE_PATTERNS.CREATE_COMMITMENT)
-    async createCommitment(@Payload() dto: SessionIdDto) {
+    async createCommitment(@Payload() dto: SessionIdDto & ElectionIdDto) {
         return await this.appService.createCommitment(dto)
     }
 
@@ -34,11 +39,6 @@ export class AppController {
     @EventPattern(SIGNING_NODE_MESSAGE_PATTERNS.DELETE_SESSION_NONCE)
     async deleteSessionNonce(@Payload() dto: SessionIdDto) {
         await this.appService.deleteSessionNonce(dto)
-    }
-
-    @MessagePattern(SIGNING_NODE_MESSAGE_PATTERNS.GET_NODE_INFO)
-    async getNodeInfo() {
-        return await this.appService.getNodeInfo()
     }
 
     @EventPattern(SIGNING_NODE_MESSAGE_PATTERNS.CLEANUP_ELECTION)

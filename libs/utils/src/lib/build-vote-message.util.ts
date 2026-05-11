@@ -1,4 +1,4 @@
-import { sha256 } from '@noble/hashes/sha2.js'
+import { sha256 } from '@libs/ec-schnorr'
 
 const DOMAIN = 'ev-vote-v1'
 

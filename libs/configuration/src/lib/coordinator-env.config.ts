@@ -32,9 +32,6 @@ export class CoordinatorEnvConfiguration {
     REDIS_SESSION_CACHE_TTL: number
 
     @IsNumber()
-    REDIS_PK_SIGNING_NODE_CACHE_TTL: number
-
-    @IsNumber()
     REDIS_VOTE_COUNT_CACHE_TTL: number
 
     @IsString()
@@ -69,7 +66,6 @@ export class CoordinatorEnvConfiguration {
             3304, 3305, 3306
         ]
 
-        this.REDIS_PK_SIGNING_NODE_CACHE_TTL = Number(process.env['REDIS_PK_SIGNING_NODE_CACHE_TTL']) || 600000
         this.REDIS_VOTE_COUNT_CACHE_TTL = Number(process.env['REDIS_VOTE_COUNT_CACHE_TTL']) || 604800000 // 7 days
         this.REDIS_HOST = process.env['REDIS_HOST'] || 'localhost'
         this.REDIS_PORT = Number(process.env['REDIS_PORT']) || 6379

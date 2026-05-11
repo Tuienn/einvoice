@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from 'class-validator'
+import { IsDefined, IsNumber, IsString } from 'class-validator'
 
 export class SigningNodeEnvConfiguration {
     @IsString()
@@ -22,6 +22,10 @@ export class SigningNodeEnvConfiguration {
     @IsString()
     REDIS_PASSWORD: string
 
+    @IsDefined()
+    @IsString()
+    ENCRYPTION_KEY: string
+
     constructor() {
         this.TCP_HOST = process.env['TCP_HOST'] || 'localhost'
         this.TCP_PORT = Number(process.env['TCP_PORT']) || 3304
@@ -30,5 +34,6 @@ export class SigningNodeEnvConfiguration {
         this.REDIS_HOST = process.env['REDIS_HOST'] || 'localhost'
         this.REDIS_PORT = Number(process.env['REDIS_PORT']) || 6379
         this.REDIS_PASSWORD = process.env['REDIS_PASSWORD'] || 'secret'
+        this.ENCRYPTION_KEY = process.env['ENCRYPTION_KEY'] || 'default_encryption_key_32_bytes_length'
     }
 }

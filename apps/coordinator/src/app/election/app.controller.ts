@@ -53,9 +53,4 @@ export class AppController {
     async checkVoterInElection(@Payload() dto: GetVoterInElectionDto) {
         return await this.appService.getVoterInElection(dto)
     }
-
-    @MessagePattern(COORDINATOR_MESSAGE_PATTERNS.COLLECTIVE_PUBLIC_KEY)
-    async collectivePublicKey() {
-        return await this.appService.collectivePublicKey()
-    }
 }

@@ -43,22 +43,13 @@ export class AppService {
         )
     }
 
-    async collectivePublicKey(): Promise<string> {
-        const existPublicKeyHex = await this.cacheManager.get<string>('collectivePublicKey')
+    async generateCollectivePublicKey(electionId: string): Promise<string> {
         const ecParams = getParams()
 
-        //SECTION - Nếu đã có collective public key trong cache thì dùng luôn
-        if (existPublicKeyHex) {
-            if (!isValidPointHex(existPublicKeyHex, ecParams.Point)) {
-                throw new BadRequestException('Invalid collective public key in cache')
-            }
-            return existPublicKeyHex
-        }
-
-        //SECTION - Nếu chưa có thì gọi các signing node để lấy public key và tính toán collective public key
+        //SECTION - Nếu chưa có thì gọi các signing node để generate public key và tính toán collective public key
         const results = await Promise.all(
             this.signingNodeClients.map((client) =>
-                lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.GET_NODE_INFO, {}))
+                lastValueFrom(client.send(SIGNING_NODE_MESSAGE_PATTERNS.GENERATE_KEY_PAIR, { electionId }))
             )
         )
 
@@ -71,13 +62,6 @@ export class AppService {
 
         const collectivePublicKey = computeCollectivePublicKey(publicKeys, ecParams)
         const collectivePublicKeyHex = pointToHex(collectivePublicKey)
-
-        //SECTION - Cache collective public key với TTL
-        await this.cacheManager.set(
-            'collectivePublicKey',
-            collectivePublicKeyHex,
-            CONFIGURATION.COORDINATOR_CONFIG.REDIS_PK_SIGNING_NODE_CACHE_TTL
-        )
 
         return collectivePublicKeyHex
     }
@@ -227,48 +211,42 @@ export class AppService {
     }
 
     async startElection(dto: MongoIdDto) {
-        const collectivePublicKeyHex = await this.collectivePublicKey()
+        //SECTION - Pre-validate — không cần transaction
+        const election = await this.prisma.election.findUniqueOrThrow({
+            where: { id: dto.id },
+            include: { electionVoters: true }
+        })
 
+        if (election.status !== ElectionStatus.PENDING) {
+            throw new ConflictException('Only PENDING election can be started')
+        }
+        if (election.candidateIds.length < 2) {
+            throw new UnprocessableEntityException('At least 2 candidates are required')
+        }
+        if (!election.electionVoters || election.electionVoters.length < 3) {
+            throw new UnprocessableEntityException('At least 3 voters are required')
+        }
+
+        //SECTION - Generate keys — ngoài transaction, idempotent
+        const collectivePublicKeyHex = await this.generateCollectivePublicKey(dto.id)
+
+        //SECTION - Commit — transaction ngắn, chỉ write
         try {
             return await this.prisma.$transaction(async (tx) => {
-                const election = await tx.election.findUniqueOrThrow({
-                    where: {
-                        id: dto.id
-                    },
-                    include: {
-                        electionVoters: true
-                    }
-                })
-
-                if (election.startDate) {
-                    throw new ConflictException('Election already started')
-                }
-
-                if (election.status !== ElectionStatus.PENDING) {
+                // Re-validate chống race condition (ai đó startElection đồng thời)
+                const current = await tx.election.findUniqueOrThrow({ where: { id: dto.id } })
+                if (current.status !== ElectionStatus.PENDING) {
                     throw new ConflictException('Only PENDING election can be started')
                 }
 
-                if (election.candidateIds.length < 2) {
-                    throw new UnprocessableEntityException('At least 2 candidates are required')
-                }
-
-                if (!election.electionVoters || election.electionVoters.length < 3) {
-                    throw new UnprocessableEntityException('At least 3 voters are required to start the election')
-                }
-
                 return await tx.election.update({
-                    where: {
-                        id: dto.id
-                    },
+                    where: { id: dto.id },
                     data: {
                         status: ElectionStatus.ACTIVE,
                         startDate: new Date(),
                         collectivePublicKey: collectivePublicKeyHex
                     },
-                    omit: {
-                        blockchainRef: true,
-                        merkleRoot: true
-                    }
+                    omit: { blockchainRef: true, merkleRoot: true }
                 })
             })
         } catch (e) {
@@ -348,11 +326,11 @@ export class AppService {
                 })
             })
 
-            //NOTE - Sau khi election hoàn tất, gửi message đến signing node để dọn dẹp session nonce liên quan đến election này
-            //  tránh tấn công phục hồi private key và dọn dẹp cache vote count
+            //NOTE - Gửi message để xóa key pair và signed voter ở signing node
             this.signingNodeClients.forEach((client) =>
                 client.emit(SIGNING_NODE_MESSAGE_PATTERNS.CLEANUP_ELECTION, { electionId: dto.id }).subscribe()
             )
+            //NOTE - Xóa cache vote count
             await this.cacheManager.del(`election:vote:count:${dto.id}`)
 
             return election

@@ -43,20 +43,12 @@ export class AppService {
             })
         )
 
-        const collectivePublicKey = await lastValueFrom(
-            this.coordinatorClient.send(COORDINATOR_MESSAGE_PATTERNS.COLLECTIVE_PUBLIC_KEY, {})
-        )
-
         if (existElection!.status === 'COMPLETED') {
             throw new ForbiddenException('Election is already completed')
         }
 
         if (existElection!.status !== 'CLOSED') {
             throw new ForbiddenException('Election is not closed')
-        }
-
-        if (collectivePublicKey !== existElection!.collectivePublicKey) {
-            throw new ConflictException('Collective public key of election does not match with signing nodes param')
         }
 
         if (!existElection!.collectivePublicKey) {
